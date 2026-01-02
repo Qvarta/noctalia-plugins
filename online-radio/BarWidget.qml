@@ -14,10 +14,13 @@ Rectangle {
     property string section: ""
     
     // Свойство для иконки из настроек
-    property string currentIconName: pluginApi?.pluginSettings?.currentIconName || pluginApi?.manifest?.metadata?.defaultSettings?.currentIconName || "music_note"
+    property string currentIconName: pluginApi?.pluginSettings?.currentIconName || pluginApi?.manifest?.metadata?.defaultSettings?.currentIconName
 
     implicitWidth: row.implicitWidth + Style.marginM * 2
     implicitHeight: Style.barHeight
+
+    readonly property string barPosition: Settings.data.bar.position || "top"
+    readonly property bool barIsVertical: barPosition === "left" || barPosition === "right"
 
     color: Style.capsuleColor
     radius: Style.radiusM
@@ -34,6 +37,7 @@ Rectangle {
 
         NText {
             text: "Radio"
+            visible: !barIsVertical
             color: Color.mOnSurface
             pointSize: Style.fontSizeS
         }
@@ -47,7 +51,7 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
 
         onEntered: {
-            root.color = Qt.lighter(Style.capsuleColor, 1.1)
+            root.color = Qt.lighter(root.color, 1.1)
         }
 
         onExited: {
@@ -58,9 +62,9 @@ Rectangle {
             if (mouse.button === Qt.LeftButton) {
                 pluginApi.openPanel(root.screen)
             } else if (mouse.button === Qt.RightButton) {
-                // Можно открыть настройки по правому клику
-                pluginApi.openSettings();
+               
             }
         }
+        
     }
 }

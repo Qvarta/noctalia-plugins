@@ -1,18 +1,17 @@
 import QtQuick
 import Quickshell.Io
-
+import qs.Commons
 Item {
     id: root
     property var pluginApi: null
     
-    // Основные свойства для управления воспроизведением
     property string currentPlayingStation: ""
     property string currentPlayingProcessState: "" // "start" или ""
     
     // FileView для работы с JSON файлом
     FileView {
         id: jsonFile
-        path: "/home/ko/.config/test/stations.json"
+        path: pluginApi.pluginSettings.stations_json
         blockLoading: false
         
         onTextChanged: {
@@ -81,7 +80,7 @@ Item {
         }
     }
     
-    // Функция для запуска станции
+    // Функция для запуска воспроизведения
     function playStation(stationName, stationUrl) {
         // Останавливаем текущее воспроизведение
         stopPlayback();
@@ -96,7 +95,6 @@ Item {
             pluginApi.saveSettings();
         }
         
-        // Просто запускаем VLC через Process без сложного создания QML объектов
         var process = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
         process.command = ["sh", "-c", "cvlc --no-video --play-and-exit '" + stationUrl.replace(/'/g, "'\"'\"'") + "'"];
         
@@ -106,7 +104,6 @@ Item {
             }
             process.destroy();
         });
-        
         process.startDetached();
     }
     
