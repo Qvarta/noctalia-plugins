@@ -4,9 +4,9 @@
     {
       "id": "online-radio",
       "name": "Online radio",
-      "version": "1.1.0",
+      "version": "1.0.5",
       "author": "Qvarta",
-      "description": "A simple plugin for online radio.",
+      "description": "A Noctalia Shell plugin that provides online radio streaming functionality with support for custom station lists and playback controls.",
       "repository": "https://github.com/Qvarta/Pluggins",
       "minNoctaliaVersion": "3.6.0",
       "license": "MIT",
