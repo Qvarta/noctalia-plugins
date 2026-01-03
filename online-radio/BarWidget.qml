@@ -5,19 +5,18 @@ import qs.Commons
 import qs.Widgets
 import qs.Services.UI
 
+
 Rectangle {
     id: root
 
     property var pluginApi: null
     property ShellScreen screen
-    property string widgetId: ""
-    property string section: ""
-    
+
     // Свойство для иконки из настроек
     property string currentIconName: pluginApi?.pluginSettings?.currentIconName || pluginApi?.manifest?.metadata?.defaultSettings?.currentIconName
 
     implicitWidth: row.implicitWidth + Style.marginM * 2
-    implicitHeight: Style.barHeight
+    implicitHeight: Style.barHeight - 4
 
     readonly property string barPosition: Settings.data.bar.position || "top"
     readonly property bool barIsVertical: barPosition === "left" || barPosition === "right"
@@ -25,17 +24,20 @@ Rectangle {
     color: Style.capsuleColor
     radius: Style.radiusM
 
+
     RowLayout {
         id: row
         anchors.centerIn: parent
-        spacing: Style.marginS
-        
+        spacing: Style.marginL
+
         NIcon {
+            id: icon
             icon: root.currentIconName
             color: Color.mPrimary
         }
 
         NText {
+            id: text
             text: "Radio"
             visible: !barIsVertical
             color: Color.mOnSurface
@@ -51,11 +53,15 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
 
         onEntered: {
-            root.color = Qt.lighter(root.color, 1.1)
+            root.color = Color.mHover
+            text.color = Color.mOnHover
+            icon.color = Color.mOnHover
         }
 
         onExited: {
             root.color = Style.capsuleColor
+            text.color = Color.mOnSurface
+            icon.color = Color.mPrimary
         }
 
         onClicked: function(mouse) {
