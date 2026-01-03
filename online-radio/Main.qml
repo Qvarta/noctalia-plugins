@@ -5,6 +5,7 @@ Item {
     id: root
     property var pluginApi: null
     
+    // Основные свойства для управления воспроизведением
     property string currentPlayingStation: ""
     property string currentPlayingProcessState: "" // "start" или ""
     
@@ -80,7 +81,7 @@ Item {
         }
     }
     
-    // Функция для запуска воспроизведения
+    // Функция для запуска станции
     function playStation(stationName, stationUrl) {
         // Останавливаем текущее воспроизведение
         stopPlayback();
