@@ -1,0 +1,13 @@
+{
+    "id": "screenshot-plugin",
+    "name": "Screenshot Plugin",
+    "version": "1.0.0",
+    "author": "Qvarta",
+    "description": "Screenshot Plugin",
+    "license": "MIT",
+    "entryPoints": {
+        "main": "Main.qml",
+        "panel": "Panel.qml"
+    },
+    "dependencies": ["hyprshot"]
+}
