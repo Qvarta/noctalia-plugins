@@ -14,7 +14,7 @@
     "settings": "Settings.qml"
   },
   "dependencies": {
-    "plugins": []
+    "plugins": ["vlc"]
   },
   "metadata": {
     "defaultSettings": {
