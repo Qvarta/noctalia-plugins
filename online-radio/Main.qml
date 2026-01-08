@@ -5,11 +5,9 @@ Item {
     id: root
     property var pluginApi: null
     
-    // Основные свойства для управления воспроизведением
     property string currentPlayingStation: ""
     property string currentPlayingProcessState: "" // "start" или ""
     
-    // FileView для работы с JSON файлом
     FileView {
         id: jsonFile
         path: pluginApi.pluginSettings.stations_json
@@ -20,25 +18,21 @@ Item {
                 try {
                     var jsonData = JSON.parse(jsonFile.text());
                     
-                    // Сохраняем текущую играющую станцию перед очисткой
                     var savedStation = currentPlayingStation || "";
                     var savedState = currentPlayingProcessState || "";
                     
-                    // Очищаем предыдущие данные
                     for (var key in pluginApi.pluginSettings) {
                         if (key.startsWith("station_")) {
                             delete pluginApi.pluginSettings[key];
                         }
                     }
                     
-                    // Сохраняем каждую станцию как station_X_name и station_X_url
                     if (Array.isArray(jsonData)) {
                         for (var i = 0; i < jsonData.length; i++) {
                             var station = jsonData[i];
                             pluginApi.pluginSettings["station_" + i + "_name"] = station.name || "";
                             pluginApi.pluginSettings["station_" + i + "_url"] = station.url || "";
                         }
-                        // Сохраняем количество станций
                         pluginApi.pluginSettings.station_count = jsonData.length;
                     }
                     
@@ -70,7 +64,6 @@ Item {
     }
     
     Component.onCompleted: {
-        // Восстанавливаем состояние из настроек
         if (pluginApi && pluginApi.pluginSettings) {
             currentPlayingStation = pluginApi.pluginSettings.currentPlayingStation || "";
             currentPlayingProcessState = pluginApi.pluginSettings.currentPlayingProcessState || "";
@@ -81,12 +74,9 @@ Item {
         }
     }
     
-    // Функция для запуска станции
     function playStation(stationName, stationUrl) {
-        // Останавливаем текущее воспроизведение
         stopPlayback();
         
-        // Сохраняем состояние
         currentPlayingStation = stationName;
         currentPlayingProcessState = "start";
         
@@ -108,9 +98,7 @@ Item {
         process.startDetached();
     }
     
-    // Функция для остановки воспроизведения
     function stopPlayback() {
-        // Убиваем все процессы VLC
         var killProcess = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
         killProcess.command = ["sh", "-c", "kill -9 $(ps aux | grep -E '[c]vlc|[v]lc' | awk '{print $2}') 2>/dev/null || true"];
         
@@ -120,7 +108,6 @@ Item {
         
         killProcess.startDetached();
         
-        // Очищаем состояние
         currentPlayingStation = "";
         currentPlayingProcessState = "";
         
@@ -131,7 +118,6 @@ Item {
         }
     }
     
-    // Функция для получения списка станций
     function getStations() {
         var stations = [];
         

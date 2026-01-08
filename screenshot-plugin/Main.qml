@@ -6,6 +6,7 @@ import qs.Services.UI
 Item {
     id: root
     property var pluginApi: null
+    property ShellScreen screen
     
     Component.onCompleted: {
         if (pluginApi) {
@@ -31,7 +32,6 @@ Item {
             screenshotProcess.destroy();
         });
         
-        // Закрываем панель после запуска
         if (pluginApi && pluginApi.closePanel) {
             pluginApi.closePanel();
         }
@@ -41,18 +41,10 @@ Item {
         target: "plugin:screenshot-plugin"
         
         function toggle() {
-            if (!root.pluginApi) return;
-            
-            if (Quickshell.screens && Quickshell.screens.length > 0) {
-                root.pluginApi.openPanel(Quickshell.screens[0]);
-            }
-        }
-        
-        function open() {
-            if (!root.pluginApi) return;
-            
-            if (Quickshell.screens && Quickshell.screens.length > 0) {
-                root.pluginApi.openPanel(Quickshell.screens[0]);
+            if (pluginApi) {
+                pluginApi.withCurrentScreen(screen => {
+                    pluginApi.openPanel(screen, this);
+                });
             }
         }
     }

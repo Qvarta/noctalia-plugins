@@ -1,7 +1,7 @@
 {
-  "currentPlayingStation": "",
-  "currentPlayingProcessState": "",
-  "currentIconName": "access-point",
+  "currentPlayingStation": "Эльдорадио",
+  "currentPlayingProcessState": "start",
+  "currentIconName": "activity-heartbeat",
   "station_count": 23,
   "stations_json": "/home/ko/.config/test/stations.json",
   "station_0_name": "Best FM",
