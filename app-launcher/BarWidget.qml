@@ -22,12 +22,12 @@ Item {
 
         screen: root.screen
         oppositeDirection: BarService.getPillDirection(root)
-        icon: "123"
-        text: "text"
+        icon: "paw-filled"
+        // text: ""
         autoHide: false
-        forceOpen: true
+        forceOpen: false
         forceClose: false
-        tooltipText: "App"
+        tooltipText: pluginApi?.tr("tooltipLabel")
         
         onClicked: {
             pluginApi.openPanel(root.screen,this);

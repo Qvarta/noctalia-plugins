@@ -18,8 +18,9 @@ Item {
     property var allApps: []
     property string searchQuery: ""
     property int selectedIndex: 0
-    property bool isOpen: false
-    
+
+    anchors.fill: parent
+
     property var filteredApps: {
         var query = searchQuery.toLowerCase().trim();
         
@@ -33,8 +34,6 @@ Item {
             return name.includes(query) || comment.includes(query);
         }).slice(0, 30);
     }
-    
-    anchors.fill: parent
     
     Component.onCompleted: {
         loadApps();
@@ -127,7 +126,7 @@ Item {
                 fill: parent
                 margins: Style.marginM
             }
-            spacing: Style.marginM
+            spacing: Style.marginS
 
             NTextInput {
                 id: searchInput
@@ -141,9 +140,45 @@ Item {
                     }
                 }
                 
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Escape) {
+                        if (pluginApi) {
+                            pluginApi.closePanel();
+                        }
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) {
+                        selectedIndex = Math.min(selectedIndex + 1, filteredApps.length - 1);
+                        event.accepted = true;
+                        if (appListView.contentHeight > appListView.height) {
+                            appListView.positionViewAtIndex(selectedIndex, ListView.Contain);
+                        }
+                    } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Backtab) {
+                        selectedIndex = Math.max(selectedIndex - 1, 0);
+                        event.accepted = true;
+                        if (appListView.contentHeight > appListView.height) {
+                            appListView.positionViewAtIndex(selectedIndex, ListView.Contain);
+                        }
+                    } else if (event.key === Qt.Key_PageDown) {
+                        selectedIndex = Math.min(selectedIndex + 5, filteredApps.length - 1);
+                        event.accepted = true;
+                        if (appListView.contentHeight > appListView.height) {
+                            appListView.positionViewAtIndex(selectedIndex, ListView.Contain);
+                        }
+                    } else if (event.key === Qt.Key_PageUp) {
+                        selectedIndex = Math.max(selectedIndex - 5, 0);
+                        event.accepted = true;
+                        if (appListView.contentHeight > appListView.height) {
+                            appListView.positionViewAtIndex(selectedIndex, ListView.Contain);
+                        }
+                    }
+                }
+                
                 onTextChanged: {
                     searchQuery = text;
                     selectedIndex = 0;
+                    if (appListView.contentHeight > appListView.height) {
+                        appListView.positionViewAtBeginning();
+                    }
                 }
             }
 
@@ -161,6 +196,7 @@ Item {
                     anchors.margins: Style.marginS
                     model: filteredApps
                     spacing: 2
+                    clip: true
                     
                     delegate: Rectangle {
                         id: appDelegate
@@ -168,16 +204,20 @@ Item {
                         height: itemHeight
                         color: selectedIndex === index ? Color.mPrimary : "transparent"
                         radius: Style.radiusS
-                        border.width: Style.borderS
-                        border.color: mouseArea.containsMouse ? Color.mOutline : "transparent"
+
 
                         MouseArea {
                             id: mouseArea
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onEntered: selectedIndex = index
-                            onClicked: launchApp(modelData)
+                            onEntered: {
+                                selectedIndex = index;
+                            }
+                            onClicked: {
+                                selectedIndex = index;
+                                launchApp(modelData);
+                            }
                         }
 
                         RowLayout {
