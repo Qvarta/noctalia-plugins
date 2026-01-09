@@ -1,0 +1,13 @@
+{
+    "id": "app-launcher",
+    "name": "App Launcher",
+    "version": "1.0.0",
+    "author": "Qvarta",
+    "description": "App Launcher Plugin",
+    "license": "MIT",
+    "entryPoints": {
+        "main": "BarWidget.qml",
+        "panel": "Panel.qml"
+    },
+    "dependencies": []
+}
