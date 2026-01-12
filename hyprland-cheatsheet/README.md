@@ -1,7 +1,9 @@
 # THIS PLUGIN IS NOT MINE 
 
-- author: blacku
-- Unnecessary code has been removed and the appearance has been modified.
+- author: blacku https://github.com/noctalia-dev/noctalia-plugins/tree/main/hyprland-cheatsheet
+- Unnecessary code has been removed.
+- Appearance has been modified (preview2).
+- Added a Settings widget for selecting a configuration file.
 
 # Hyprland Cheatsheet for Noctalia
 
