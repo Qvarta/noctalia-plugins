@@ -11,7 +11,7 @@ Item {
   
   Process {
     id: catProcess
-    command: ["sh", "-c", "cat " + (pluginApi?.pluginSettings?.config || "~/.config/hypr/keybind.conf")]
+    command: ["sh", "-c", "cat " + pluginApi?.pluginSettings?.config]
     running: false
     
     stdout: SplitParser {
@@ -156,5 +156,11 @@ Item {
       if (title.includes("перемещение окон")) return "arrows-move-horizontal";
       
       return "keyboard-filled";
+  }
+
+  function refreshData() {
+      pluginApi.pluginSettings.cheatsheetData = [];
+      pluginApi.saveSettings();
+      checkAndGenerate();
   }
 }
