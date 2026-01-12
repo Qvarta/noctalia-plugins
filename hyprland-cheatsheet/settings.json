@@ -114,11 +114,11 @@
       "binds": [
         {
           "keys": "Super + MOUSE_DOWN",
-          "desc": "WS след. (мышь)"
+          "desc": "WS след."
         },
         {
           "keys": "Super + MOUSE_UP",
-          "desc": "WS пред. (мышь)"
+          "desc": "WS пред."
         }
       ]
     },
@@ -127,43 +127,35 @@
       "binds": [
         {
           "keys": "Super + 1",
-          "desc": "WS 1"
+          "desc": "Переключиться WS1"
         },
         {
           "keys": "Super + 2",
-          "desc": "WS 2"
+          "desc": "Переключиться WS2"
         },
         {
           "keys": "Super + 3",
-          "desc": "WS 3"
+          "desc": "Переключиться WS3"
         },
         {
           "keys": "Super + 4",
-          "desc": "WS 4"
+          "desc": "Переключиться WS4"
         },
         {
           "keys": "Super + 5",
-          "desc": "WS 5"
+          "desc": "Переключиться WS5"
         },
         {
           "keys": "Super + 6",
-          "desc": "WS 6"
+          "desc": "Переключиться WS6"
         },
         {
           "keys": "Super + 7",
-          "desc": "WS 7"
+          "desc": "Переключиться WS7"
         },
         {
           "keys": "Super + 8",
-          "desc": "WS 8"
-        },
-        {
-          "keys": "Super + 9",
-          "desc": "WS 9"
-        },
-        {
-          "keys": "Super + 0",
-          "desc": "WS 10"
+          "desc": "Переключиться WS8"
         }
       ]
     },
@@ -201,14 +193,6 @@
         {
           "keys": "Super + Shift + 8",
           "desc": "Окно на WS 8"
-        },
-        {
-          "keys": "Super + Shift + 9",
-          "desc": "Окно на WS 9"
-        },
-        {
-          "keys": "Super + Shift + 0",
-          "desc": "Окно на WS 10"
         }
       ]
     }

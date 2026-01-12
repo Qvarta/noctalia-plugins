@@ -7,210 +7,154 @@ import qs.Services.UI
 Item {
   id: root
   property var pluginApi: null
-  property string homeDir: ""
-
-  // Logger helper functions (fallback to console if Logger not available)
-  function logDebug(msg) {
-    if (typeof Logger !== 'undefined') Logger.d(msg);
-    else console.log(msg);
+  property var allLines: []
+  
+  Process {
+    id: catProcess
+    command: ["sh", "-c", "cat " + (pluginApi?.pluginSettings?.config || "~/.config/hypr/keybind.conf")]
+    running: false
+    
+    stdout: SplitParser {
+      onRead: data => {
+        root.allLines.push(data);
+      }
+    }
+    
+    onExited: (exitCode, exitStatus) => {
+      if (exitCode === 0 && root.allLines.length > 0) {
+        var fullContent = root.allLines.join("\n");
+        parseAndSave(fullContent);
+        root.allLines = [];
+      } else {
+        saveToDb([{
+          "title": pluginApi?.tr("panel.error_read_file") || "File read error",
+          "binds": [
+            { "keys": "ERROR", "desc": "Exit code: " + exitCode }
+          ]
+        }]);
+      }
+    }
   }
-
-  function logInfo(msg) {
-    if (typeof Logger !== 'undefined') Logger.i(msg);
-    else console.log(msg);
-  }
-
-  function logWarn(msg) {
-    if (typeof Logger !== 'undefined') Logger.w(msg);
-    else console.warn(msg);
-  }
-
-  function logError(msg) {
-    if (typeof Logger !== 'undefined') Logger.e(msg);
-    else console.error(msg);
-  }
-
+  
   onPluginApiChanged: {
     if (pluginApi) {
-      logInfo("HyprlandCheatsheet: pluginApi loaded, starting generator");
-      getHomeDir();
+      // Экспортируем функции через pluginApi
+      pluginApi.mainInstance = root;
+      checkAndGenerate();
     }
   }
 
   Component.onCompleted: {
     if (pluginApi) {
-      logDebug("HyprlandCheatsheet: Component.onCompleted, starting generator");
-      getHomeDir();
+      pluginApi.mainInstance = root;
+      checkAndGenerate();
     }
   }
 
-  // Функция для получения $HOME через процесс
-  function getHomeDir() {
-    logDebug("HyprlandCheatsheet: Getting $HOME directory");
-    
-    var homeProc = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
-    homeProc.command = ["sh", "-c", "echo $HOME"];
-    
-    homeProc.exited.connect(function(exitCode) {
-      if (exitCode === 0) {
-        homeDir = homeProc.stdout.trim();
-        logDebug("HyprlandCheatsheet: Got HOME = " + homeDir);
-        
-        if (homeDir && homeDir.length > 0) {
-          runGenerator();
-        } else {
-          logError("HyprlandCheatsheet: ERROR - $HOME is empty");
-          saveToDb([{
-            "title": pluginApi?.tr("main.error") || "ERROR",
-            "binds": [{ "keys": "ERROR", "desc": pluginApi?.tr("main.cannot_get_home") || "Cannot get $HOME (empty)" }]
-          }]);
-        }
-      } else {
-        logError("HyprlandCheatsheet: ERROR - failed to get $HOME, exit code: " + exitCode);
-        saveToDb([{
-          "title": pluginApi?.tr("main.error") || "ERROR",
-          "binds": [{ "keys": "ERROR", "desc": pluginApi?.tr("main.cannot_get_home") || "Cannot get $HOME, exit code: " + exitCode }]
-        }]);
-      }
-      homeProc.destroy();
-    });
-    
-    homeProc.startDetached();
+  function checkAndGenerate() {
+    if (!pluginApi?.pluginSettings?.cheatsheetData || pluginApi.pluginSettings.cheatsheetData.length === 0) {
+      allLines = [];
+      catProcess.running = true;
+    }
   }
-
-  function runGenerator() {
-    logDebug("HyprlandCheatsheet: === START GENERATOR ===");
-    
-    var filePath = homeDir + "/.config/hypr/keybind.conf";
-    var cmd = "cat " + filePath;
-
-    logDebug("HyprlandCheatsheet: HOME = " + homeDir);
-    logDebug("HyprlandCheatsheet: Full path = " + filePath);
-    logDebug("HyprlandCheatsheet: Command = " + cmd);
-    
-    var proc = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
-    proc.command = ["sh", "-c", cmd];
-    
-    proc.exited.connect(function(exitCode) {
-      logDebug("HyprlandCheatsheet: Process exited. ExitCode: " + exitCode);
-      logDebug("HyprlandCheatsheet: Stdout length: " + proc.stdout.length);
-      logDebug("HyprlandCheatsheet: Stderr: " + proc.stderr);
-
-      if (exitCode !== 0) {
-          logError("HyprlandCheatsheet: ERROR! Code: " + exitCode);
-          logError("HyprlandCheatsheet: Full stderr: " + proc.stderr);
-          
-          // Дополнительная диагностика
-          var diagCmd = "echo 'Trying to read: " + filePath + "' && ls -la " + filePath + " 2>&1 || echo 'File not found'";
-          var diagProc = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
-          diagProc.command = ["sh", "-c", diagCmd];
-          diagProc.exited.connect(function(diagExitCode) {
-              logError("HyprlandCheatsheet: Diagnostics: " + diagProc.stdout);
-              diagProc.destroy();
-          });
-          diagProc.startDetached();
-          
-          saveToDb([{
-              "title": pluginApi?.tr("main.read_error") || "READ ERROR",
-              "binds": [
-                { "keys": pluginApi?.tr("main.exit_code") || "EXIT CODE", "desc": exitCode.toString() },
-                { "keys": pluginApi?.tr("main.stderr") || "STDERR", "desc": proc.stderr }
-              ]
-          }]);
-          
-          proc.destroy();
-          return;
-      }
-
-      var content = proc.stdout;
-      logDebug("HyprlandCheatsheet: Content retrieved. Length: " + content.length);
-
-      if (content.length > 0) {
-          logDebug("HyprlandCheatsheet: First 200 chars: " + content.substring(0, 200));
-          parseAndSave(content);
-      } else {
-          logWarn("HyprlandCheatsheet: File is empty!");
-          saveToDb([{
-              "title": pluginApi?.tr("main.file_empty") || "FILE EMPTY",
-              "binds": [{ "keys": "INFO", "desc": pluginApi?.tr("main.file_no_data") || "File contains no data" }]
-          }]);
-      }
-      
-      proc.destroy();
-    });
-    
-    proc.startDetached();
-  }
-
+  
   function parseAndSave(text) {
-    logDebug("HyprlandCheatsheet: Parsing started");
     var lines = text.split('\n');
-    logDebug("HyprlandCheatsheet: Number of lines: " + lines.length);
+    var cats = [];
+    var currentCat = null;
     
-    var categories = [];
-    var currentCategory = null;
-
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim();
-
       if (line.startsWith("#") && line.match(/#\s*\d+\./)) {
-        if (currentCategory) {
-          logDebug("HyprlandCheatsheet: Saving category: " + currentCategory.title + " with " + currentCategory.binds.length + " binds");
-          categories.push(currentCategory);
-        }
+        if (currentCat) cats.push(currentCat);
         var title = line.replace(/#\s*\d+\.\s*/, "").trim();
-        logDebug("HyprlandCheatsheet: New category: " + title);
-        currentCategory = { "title": title, "binds": [] };
+        currentCat = { "title": title, "binds": [] };
       } 
       else if (line.includes("bind") && line.includes('#"')) {
-        if (currentCategory) {
-            var descMatch = line.match(/#"(.*?)"$/);
-            var description = descMatch ? descMatch[1] : "Description";
-            
-            var parts = line.split(',');
-            if (parts.length >= 2) {
-                var mod = parts[0].split('=')[1].trim().replace("$mod", "SUPER");
-                var key = parts[1].trim().toUpperCase();
-                if (parts[0].includes("SHIFT")) mod += "+SHIFT";
-                if (parts[0].includes("CTRL")) mod += "+CTRL";
-                
-                currentCategory.binds.push({
-                    "keys": mod + " + " + key,
-                    "desc": description
-                });
-                logDebug("HyprlandCheatsheet: Added bind: " + mod + " + " + key);
-            }
+        if (currentCat) {
+          var descMatch = line.match(/#"(.*?)"$/);
+          var desc = descMatch ? descMatch[1] : (pluginApi?.tr("panel.no_description") || "No description");
+          var parts = line.split(',');
+          if (parts.length >= 2) {
+            var bindPart = parts[0].trim();
+            var keyPart = parts[1].trim();
+            var mod = "";
+            if (bindPart.includes("$mod")) mod = "Super";
+            if (bindPart.includes("SHIFT")) mod += (mod ? " + Shift" : "Shift");
+            if (bindPart.includes("CTRL")) mod += (mod ? " + Ctrl" : "Ctrl");
+            if (bindPart.includes("ALT")) mod += (mod ? " + Alt" : "Alt");
+            var key = keyPart.toUpperCase();
+            var fullKey = mod + (mod && key ? " + " : "") + key;
+            currentCat.binds.push({ "keys": fullKey, "desc": desc });
+          }
         }
+      }
+    }
+    if (currentCat) cats.push(currentCat);
+    
+    if (cats.length > 0) {
+      pluginApi.pluginSettings.cheatsheetData = cats;
+      pluginApi.saveSettings();
+    } else {
+      if (pluginApi?.pluginSettings) {
+        pluginApi.pluginSettings.cheatsheetData = [];
+        pluginApi.saveSettings();
+      }
+    }
+  }
+  
+  IpcHandler {
+    target: "plugin:hyprland-cheatsheet"
+    
+    function toggle() {
+      if (pluginApi) {
+        pluginApi.pluginSettings.cheatsheetData = [];
+        pluginApi.saveSettings();
+        checkAndGenerate();
+        pluginApi.withCurrentScreen(screen => {
+          pluginApi.openPanel(screen);
+        });
       }
     }
     
-    if (currentCategory) {
-      logDebug("HyprlandCheatsheet: Saving last category: " + currentCategory.title);
-      categories.push(currentCategory);
-    }
-
-    logDebug("HyprlandCheatsheet: Found " + categories.length + " categories.");
-    saveToDb(categories);
-  }
-
-  function saveToDb(data) {
+    function refresh() {
       if (pluginApi) {
-          pluginApi.pluginSettings.cheatsheetData = data;
-          pluginApi.saveSettings();
-          logInfo("HyprlandCheatsheet: SAVED TO DB " + data.length + " categories");
-      } else {
-          logError("HyprlandCheatsheet: ERROR - pluginApi is null!");
-      }
-  }
-
-  IpcHandler {
-    target: "plugin:hyprland-cheatsheet"
-    function toggle() {
-      logDebug("HyprlandCheatsheet: IPC toggle called");
-      if (pluginApi) {
-        getHomeDir();
-        pluginApi.withCurrentScreen(screen => pluginApi.openPanel(screen));
+        pluginApi.pluginSettings.cheatsheetData = [];
+        pluginApi.saveSettings();
+        checkAndGenerate();
       }
     }
+  }
+  
+  function getKeyColor(keyName) {
+    if (keyName === "Super") return Color.mPrimary; 
+    if (keyName === "PRINT") return Color.mSecondary;
+    if (["Alt", "Ctrl", "Shift", "ESCAPE", "ENTER", "TAB", "SPACE", "BACKSPACE", "DELETE"].includes(keyName)) 
+      return Color.mTertiary;
+    if (keyName.startsWith("F")) return Color.mTertiary;
+    if (keyName.startsWith("XF86")) return Qt.lighter(Color.mTertiary, 1.2);
+    if (keyName.match(/^[0-9]$/)) return Qt.lighter(Color.mPrimary, 1.3);
+    if (keyName.includes("MOUSE")) return Color.mSecondary;
+    if (keyName.includes("ARROW")) return Qt.darker(Color.mTertiary, 1.1);
+    if (keyName.includes("PAGE")) return Qt.lighter(Color.mPrimary, 1.1);
+    if (keyName.includes("HOME") || keyName.includes("END")) 
+      return Qt.lighter(Color.mTertiary, 1.1);
+    return  Qt.lighter(Color.mPrimary, 1.3);
+  }
+  
+  function getCategoryIcon(categoryTitle) {
+      var title = categoryTitle.toLowerCase();
+      
+      if (title.includes("меню")) return "menu";
+      if (title.includes("приложения")) return "apps-filled";
+      if (title.includes("система")) return "settings-filled";
+      if (title.includes("окна")) return "brand-windows-filled";
+      if (title.includes("фокус")) return "focus";
+      if (title.includes("мышь")) return "mouse-filled";
+      if (title.includes("рабочие пространства") || title.includes("рабочие")) 
+          return "circle-dot-filled";
+      if (title.includes("перемещение окон")) return "arrows-move-horizontal";
+      
+      return "keyboard-filled";
   }
 }

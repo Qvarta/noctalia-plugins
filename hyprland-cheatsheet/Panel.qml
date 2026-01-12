@@ -2,401 +2,263 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import qs.Commons
 import qs.Widgets
 
 Item {
-  id: root
-  property var pluginApi: null
-  property var rawCategories: pluginApi?.pluginSettings?.cheatsheetData || []
-  property var categories: rawCategories  
-  property var column0Items: []
-  property var column1Items: []
-  property var column2Items: []
-
-  onRawCategoriesChanged: {
-    updateColumnItems();
-  }
-
-  function updateColumnItems() {
-    var assignments = distributeCategories();
-    column0Items = buildColumnItems(assignments[0]);
-    column1Items = buildColumnItems(assignments[1]);
-    column2Items = buildColumnItems(assignments[2]);
-  }
-  property real contentPreferredWidth: 1300
-  property real contentPreferredHeight: 700
-  readonly property var geometryPlaceholder: panelContainer
-  readonly property bool allowAttach: false 
-  readonly property bool panelAnchorHorizontalCenter: true
-  readonly property bool panelAnchorVerticalCenter: true
-  anchors.fill: parent
-  property var allLines: []
-  property bool isLoading: false
-  
-  onPluginApiChanged: { if (pluginApi) checkAndGenerate(); }
-  Component.onCompleted: { if (pluginApi) checkAndGenerate(); }
-
-  function checkAndGenerate() {
-      if (root.rawCategories.length === 0) {
-          isLoading = true;
-          allLines = [];
-          catProcess.running = true;
-      }
-  }
-
-  Process {
-      id: catProcess
-      command: ["sh", "-c", "cat ~/.config/hypr/keybind.conf"]
-      running: false
-      
-      stdout: SplitParser {
-          onRead: data => {
-              root.allLines.push(data);
-          }
-      }
-      
-      onExited: (exitCode, exitStatus) => {
-          isLoading = false;
-          if (exitCode === 0 && root.allLines.length > 0) {
-              var fullContent = root.allLines.join("\n");
-              parseAndSave(fullContent);
-              root.allLines = [];
-          } else {
-              errorText.text = pluginApi?.tr("panel.error_read_file") || "File read error";
-              errorView.visible = true;
-          }
-      }
-  }
-
-  function parseAndSave(text) {
-      var lines = text.split('\n');
-      var cats = [];
-      var currentCat = null;
-
-      for (var i = 0; i < lines.length; i++) {
-          var line = lines[i].trim();
-          if (line.startsWith("#") && line.match(/#\s*\d+\./)) {
-              if (currentCat) cats.push(currentCat);
-              var title = line.replace(/#\s*\d+\.\s*/, "").trim();
-              currentCat = { "title": title, "binds": [] };
-          } 
-          else if (line.includes("bind") && line.includes('#"')) {
-              if (currentCat) {
-                  var descMatch = line.match(/#"(.*?)"$/);
-                  var desc = descMatch ? descMatch[1] : (pluginApi?.tr("panel.no_description") || "No description");
-                  var parts = line.split(',');
-                  if (parts.length >= 2) {
-                      var bindPart = parts[0].trim();
-                      var keyPart = parts[1].trim();
-                      var mod = "";
-                      if (bindPart.includes("$mod")) mod = "Super";
-                      if (bindPart.includes("SHIFT")) mod += (mod ? " + Shift" : "Shift");
-                      if (bindPart.includes("CTRL")) mod += (mod ? " + Ctrl" : "Ctrl");
-                      if (bindPart.includes("ALT")) mod += (mod ? " + Alt" : "Alt");
-                      var key = keyPart.toUpperCase();
-                      var fullKey = mod + (mod && key ? " + " : "") + key;
-                      currentCat.binds.push({ "keys": fullKey, "desc": desc });
-                  }
-              }
-          }
-      }
-      if (currentCat) cats.push(currentCat);
-      if (cats.length > 0) {
-          pluginApi.pluginSettings.cheatsheetData = cats;
-          pluginApi.saveSettings();
-      } else {
-          errorText.text = pluginApi?.tr("panel.no_categories") || "No categories found";
-          errorView.visible = true;
-      }
-  }
-
-  Rectangle {
-    id: panelContainer
+    id: root
+    property var pluginApi: null
+    property var rawCategories: pluginApi?.pluginSettings?.cheatsheetData || []
+    property var categories: rawCategories
+    
+    property int columnCount: {
+        if (width < 800) return 1;
+        if (width < 1200) return 2;
+        return 3;
+    }
+    
+    onRawCategoriesChanged: {
+        updateColumnItems();
+    }
+    
+    function updateColumnItems() {
+        var columns = [];
+        for (var i = 0; i < columnCount; i++) {
+            columns.push([]);
+        }
+        
+        var sortedCategories = [];
+        for (var i = 0; i < categories.length; i++) {
+            sortedCategories.push({
+                index: i,
+                bindCount: categories[i].binds.length
+            });
+        }
+        
+        sortedCategories.sort((a, b) => b.bindCount - a.bindCount);
+        
+        var columnHeights = new Array(columnCount).fill(0);
+        
+        for (var i = 0; i < sortedCategories.length; i++) {
+            var catIndex = sortedCategories[i].index;
+            var weight = categories[catIndex].binds.length + 1;
+            
+            var minHeight = columnHeights[0];
+            var minColumn = 0;
+            for (var c = 1; c < columnCount; c++) {
+                if (columnHeights[c] < minHeight) {
+                    minHeight = columnHeights[c];
+                    minColumn = c;
+                }
+            }
+            
+            columns[minColumn].push(catIndex);
+            columnHeights[minColumn] += weight;
+        }
+        
+        columnRepeater.model = columnCount;
+    }
+    
+    property real contentPreferredWidth: 1300
+    property real contentPreferredHeight: 880
+    readonly property var geometryPlaceholder: panelContainer
+    readonly property bool allowAttach: false 
+    readonly property bool panelAnchorHorizontalCenter: true
+    readonly property bool panelAnchorVerticalCenter: true
     anchors.fill: parent
-    color: Color.mSurface 
-    radius: Style.radiusL
-    clip: true
-
+    
     Rectangle {
-      id: header
-      anchors.top: parent.top
-      anchors.left: parent.left
-      anchors.right: parent.right
-      height: 45
-      color: Color.mSurfaceVariant
-      radius: Style.radiusL
-      
-      RowLayout {
-        anchors.centerIn: parent
-        spacing: Style.marginS
-        NIcon {
-          icon: "keyboard-filled"
-          pointSize: Style.fontSizeXL
-          color: Color.mPrimary
-        }
+        id: panelContainer
+        anchors.fill: parent
+        color: Color.mSurface
+        radius: Style.radiusL
+        clip: true
+        
         NText {
-          text: pluginApi?.tr("panel.title") || "Cheat Sheet"
-          font.pointSize: Style.fontSizeXL
-          color: Color.mPrimary
-        }
-      }
-    }
-
-    NText {
-        id: loadingText
-        anchors.centerIn: parent
-        text: pluginApi?.tr("panel.loading") || "Loading..."
-        visible: root.isLoading
-        font.pointSize: Style.fontSizeL
-        color: Color.mOnSurface
-    }
-
-    ColumnLayout {
-        id: errorView
-        anchors.centerIn: parent
-        visible: false
-        spacing: Style.marginM
-        NIcon {
-            icon: "alert-circle"
-            pointSize: 48
-            Layout.alignment: Qt.AlignHCenter
-            color: Color.mError
-        }
-        NText {
-            id: errorText
-            text: pluginApi?.tr("panel.no_data") || "No data"
-            font.pointSize: Style.fontSizeM
+            id: emptyText
+            anchors.centerIn: parent
+            text: pluginApi?.tr("panel.no_data") || "No data available"
+            font.pointSize: Style.fontSizeL
             color: Color.mOnSurface
+            visible: categories.length === 0
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
+            width: parent.width * 0.8
         }
-        NButton {
-            text: pluginApi?.tr("panel.refresh_button") || "Refresh"
-            Layout.alignment: Qt.AlignHCenter
-            onClicked: {
-                pluginApi.pluginSettings.cheatsheetData = [];
-                pluginApi.saveSettings();
-                checkAndGenerate();
-            }
-        }
-    }
-
-    RowLayout {
-      id: mainLayout
-      visible: root.categories.length > 0 && !root.isLoading
-      anchors.top: header.bottom
-      anchors.bottom: parent.bottom
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.margins: Style.marginM
-      spacing: Style.marginS
-      
-      ColumnLayout {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        Layout.alignment: Qt.AlignTop
-        spacing: 2
-        Repeater {
-          model: root.column0Items
-          Loader {
-            Layout.fillWidth: true
-            sourceComponent: modelData.type === "header" ? headerComponent :
-                           (modelData.type === "spacer" ? spacerComponent : bindComponent)
-            property var itemData: modelData
-          }
-        }
-      }
-      
-      ColumnLayout {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        Layout.alignment: Qt.AlignTop
-        spacing: 2
-        Repeater {
-          model: root.column1Items
-          Loader {
-            Layout.fillWidth: true
-            sourceComponent: modelData.type === "header" ? headerComponent :
-                           (modelData.type === "spacer" ? spacerComponent : bindComponent)
-            property var itemData: modelData
-          }
-        }
-      }
-      
-      ColumnLayout {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        Layout.alignment: Qt.AlignTop
-        spacing: 2
-        Repeater {
-          model: root.column2Items
-          Loader {
-            Layout.fillWidth: true
-            sourceComponent: modelData.type === "header" ? headerComponent :
-                           (modelData.type === "spacer" ? spacerComponent : bindComponent)
-            property var itemData: modelData
-          }
-        }
-      }
-    }
-  }
-  
-  Component {
-    id: headerComponent
-    ColumnLayout {
-      spacing: 0
-      Layout.topMargin: 20
-      Layout.bottomMargin: 15
-      
-      RowLayout {
-        Layout.fillWidth: true
-        spacing: Style.marginXS
-        Layout.bottomMargin: 8
         
-        NIcon {
-          icon: getCategoryIcon(itemData.categoryIndex)
-          pointSize: 28
-          color: Color.mPrimary
-        }
-        NText {
-          text: itemData.title
-          font.pointSize: 12
-          color: Color.mPrimary
-        }
-      }
-      
-      Item {
-        Layout.fillWidth: true
-        height: 5
-      }
-    }
-  }
-  
-  Component {
-    id: spacerComponent
-    Item {
-      height: 20
-      Layout.fillWidth: true
-    }
-  }
-  
-  Component {
-    id: bindComponent
-    RowLayout {
-      spacing: Style.marginL
-      height: 26
-      Layout.bottomMargin: 2
-      Flow {
-        Layout.preferredWidth: 240
-        Layout.alignment: Qt.AlignVCenter
-        spacing: 4
-        Repeater {
-          model: itemData.keys.split(" + ")
-          Rectangle {
-            width: keyText.implicitWidth + 14
-            height: 22
-            color: getKeyColor(modelData)
-            radius: 4
-            NText {
-              id: keyText
-              anchors.centerIn: parent
-              text: modelData
-              font.pointSize: modelData.length > 12 ? 9 : 10
-              font.weight: Font.Bold
-              color: Color.mOnPrimary
+        GridLayout {
+            id: mainLayout
+            visible: root.categories.length > 0
+            anchors.fill: parent
+            anchors.margins: Style.marginL
+            columns: columnCount
+            columnSpacing: Style.marginL
+            rowSpacing: Style.marginM
+            
+            Repeater {
+                id: columnRepeater
+                model: columnCount
+                
+                ColumnLayout {
+                    id: column
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.alignment: Qt.AlignTop
+                    spacing: Style.marginM
+                    
+                    property var columnCategories: {
+                        var result = [];
+                        var categoriesPerColumn = Math.ceil(categories.length / columnCount);
+                        var startIndex = index * categoriesPerColumn;
+                        var endIndex = Math.min(startIndex + categoriesPerColumn, categories.length);
+                        
+                        for (var i = startIndex; i < endIndex; i++) {
+                            result.push(i);
+                        }
+                        return result;
+                    }
+                    
+                    Repeater {
+                        model: column.columnCategories
+                        
+                        Rectangle {
+                            id: categoryContainer
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: categoryContent.implicitHeight + 24
+                            radius: 12
+                            color: Color.mSurfaceVariant
+                            opacity: 0.9
+                            
+                            ColumnLayout {
+                                id: categoryContent
+                                width: parent.width - 24
+                                anchors.centerIn: parent
+                                spacing: 0
+                                
+                                Rectangle {
+                                    id: categoryHeader
+                                    Layout.fillWidth: true
+                                    height: 50
+                                    radius: 8
+                                    color: Qt.lighter(Color.mSurfaceVariant, 1.2)
+                                    
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: Style.marginS
+                                        
+                                    NIcon {
+                                        icon: pluginApi?.mainInstance?.getCategoryIcon(categories[modelData].title) || "keyboard-filled"
+                                        pointSize: 22
+                                        color: Color.mOnSurfaceVariant
+                                    }
+                                        
+                                        NText {
+                                            text: categories[modelData].title
+                                            font.pointSize: 12
+                                            font.weight: Font.Medium
+                                            color: Color.mOnSurfaceVariant
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.WordWrap
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 2
+                                        }
+                                    }
+                                }
+                                
+                                Rectangle {
+                                    id: bindsContainer
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: 12
+                                    Layout.preferredHeight: bindsContent.implicitHeight + 16
+                                    radius: 8
+                                    color: Color.mSurface
+                                    
+                                    ColumnLayout {
+                                        id: bindsContent
+                                        width: parent.width - 16
+                                        anchors.centerIn: parent
+                                        spacing: 4
+                                        
+                                        Repeater {
+                                            model: categories[modelData].binds
+                                            
+                                            Rectangle {
+                                                Layout.fillWidth: true
+                                                height: 36
+                                                radius: 6
+                                                color: index % 2 === 0 ? "transparent" : Qt.lighter(Color.mSurfaceVariant, 1.1)
+                                                
+                                                RowLayout {
+                                                    anchors.fill: parent
+                                                    anchors.margins: 8
+                                                    spacing: Style.marginM
+                                                    
+                                                    Flow {
+                                                        Layout.preferredWidth: 180
+                                                        Layout.alignment: Qt.AlignVCenter
+                                                        spacing: 4
+                                                        
+                                                        Repeater {
+                                                            model: modelData.keys.split(" + ")
+                                                            Rectangle {
+                                                                width: Math.max(keyText.implicitWidth + 12, 28)
+                                                                height: 24
+                                                                color: pluginApi?.mainInstance?.getKeyColor(modelData) || Qt.lighter(Color.mPrimary, 1.3)
+                                                                radius: 4
+                                                                
+                                                                NText {
+                                                                    id: keyText
+                                                                    anchors.centerIn: parent
+                                                                    text: modelData
+                                                                    font.pointSize: {
+                                                                        if (modelData.length > 12) return 8;
+                                                                        if (modelData.length > 8) return 9;
+                                                                        return 10;
+                                                                    }
+                                                                    font.weight: Font.Medium
+                                                                    color: Color.mOnPrimary
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    NText {
+                                                        Layout.fillWidth: true
+                                                        Layout.alignment: Qt.AlignVCenter
+                                                        text: modelData.desc
+                                                        font.pointSize: 11
+                                                        color: Color.mOnSurface
+                                                        wrapMode: Text.WrapAnywhere
+                                                        maximumLineCount: 2
+                                                        elide: Text.ElideRight
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        NText {
+                                            Layout.fillWidth: true
+                                            Layout.topMargin: 12
+                                            Layout.bottomMargin: 12
+                                            horizontalAlignment: Text.AlignHCenter
+                                            text: pluginApi?.tr("panel.no_binds") || "No keybindings"
+                                            font.pointSize: 10
+                                            color: Color.mOnSurfaceVariant
+                                            visible: categories[modelData].binds.length === 0
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Item {
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                    }
+                }
             }
-          }
         }
-      }
-      NText {
-        Layout.fillWidth: true
-        Layout.alignment: Qt.AlignVCenter
-        text: itemData.desc
-        font.pointSize: 11
-        color: Color.mOnSurface
-        elide: Text.ElideRight
-      }
     }
-  }
-  
-  function getKeyColor(keyName) {
-    // Different colors for different key types
-    if (keyName === "Super") return Color.mPrimary;
-    if (keyName === "PRINT") return Color.mSecondary; 
-    if (["Alt", "Ctrl", "Shift","ESCAPE"].includes(keyName)) return Color.mTertiary
-    if (keyName.startsWith("F")) return Color.mTertiary; 
-    if (keyName.startsWith("XF86")) return "#4ECDC4"; 
-    if (keyName.match(/^[0-9]$/)) return "#A8DADC"; 
-    if (keyName.includes("MOUSE")) return "#F38181"; 
-    return Color.mPrimaryContainer || "#6C757D";
-  }
-
-  function getCategoryIcon(categoryIndex) {
-    if (categoryIndex >= 0 && categoryIndex < categories.length) {
-      var category = categories[categoryIndex];
-      for (var i = 0; i < category.binds.length; i++) {
-        if (category.binds[i].keys.toLowerCase().includes("mouse")) {
-          return "mouse-filled";
-        }
-      }
-    }
-    return "keyboard";
-  }
-
-  function buildColumnItems(categoryIndices) {
-    var result = [];
-    if (!categoryIndices) return result;
-
-    for (var i = 0; i < categoryIndices.length; i++) {
-      var catIndex = categoryIndices[i];
-      if (catIndex >= categories.length) continue;
-
-      var cat = categories[catIndex];
-      result.push({ 
-        type: "header", 
-        title: cat.title,
-        categoryIndex: catIndex  
-      });
-      for (var j = 0; j < cat.binds.length; j++) {
-        result.push({
-          type: "bind",
-          keys: cat.binds[j].keys,
-          desc: cat.binds[j].desc
-        });
-      }
-      if (i < categoryIndices.length - 1) {
-        result.push({ type: "spacer" });
-      }
-    }
-    return result;
-  }
-
-  function distributeCategories() {
-    var weights = [];
-    var totalWeight = 0;
-    for (var i = 0; i < categories.length; i++) {
-      var weight = 1 + categories[i].binds.length + 1;
-      weights.push(weight);
-      totalWeight += weight;
-    }
-
-    var targetPerColumn = totalWeight / 3;
-    var columns = [[], [], []];
-    var columnWeights = [0, 0, 0];
-
-    for (var i = 0; i < categories.length; i++) {
-      var minCol = 0;
-      for (var c = 1; c < 3; c++) {
-        if (columnWeights[c] < columnWeights[minCol]) {
-          minCol = c;
-        }
-      }
-      columns[minCol].push(i);
-      columnWeights[minCol] += weights[i];
-    }
-
-    return columns;
-  }
 }
