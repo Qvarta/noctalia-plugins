@@ -1,7 +1,7 @@
 # THIS PLUGIN IS NOT MINE 
 
-    author: blacku
-    Unnecessary code has been removed and the appearance has been modified.
+- author: blacku
+- Unnecessary code has been removed and the appearance has been modified.
 
 # Hyprland Cheatsheet for Noctalia
 
