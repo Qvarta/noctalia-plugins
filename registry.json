@@ -34,6 +34,17 @@
       "license": "MIT",
       "lastUpdated": "2025-12-29T20:43:28-05:00"
     },
+        {
+      "id": "hyprland-cheatsheet",
+      "name": "Keybind Cheatsheet (Hyprland)",
+      "version": "1.2.2",
+      "author": "blacku",
+      "description": "Dynamic keyboard shortcuts cheatsheet that reads and displays Hyprland keybindings. Requires Hyprland window manager.",
+      "repository": "https://github.com/Qvarta/Pluggins",
+      "minNoctaliaVersion": "3.6.0",
+      "license": "MIT",
+      "lastUpdated": "2025-12-29T20:43:28-05:00"
+    },
     {
       "id": "app-launcher",
       "name": "App Launcher",
