@@ -1,6 +1,11 @@
+# THIS PLUGIN IS NOT MINE 
+
+    author: blacku
+    Unnecessary code has been removed and the appearance has been modified.
+
 # Hyprland Cheatsheet for Noctalia
 
-Dynamic keybind cheatsheet plugin for Noctalia/Quickshell that automatically generates and displays your Hyprland keyboard shortcuts.
+Dynamic keybind cheatsheet plugin for Noctalia/Quickshell that automatically generates and displays your Hyprland keyboard shortcuts. 
 
 ## Features
 
