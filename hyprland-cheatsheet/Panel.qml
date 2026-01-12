@@ -170,82 +170,99 @@ Item {
                                     id: bindsContainer
                                     Layout.fillWidth: true
                                     Layout.topMargin: 12
-                                    Layout.preferredHeight: bindsContent.implicitHeight + 16
+                                    Layout.preferredHeight: Math.min(bindsContent.implicitHeight + 16, 320) // Максимальная высота 320 (примерно 8 строк * 36 + отступы)
                                     radius: 8
                                     color: Color.mSurface
-                                    
-                                    ColumnLayout {
-                                        id: bindsContent
-                                        width: parent.width - 16
-                                        anchors.centerIn: parent
-                                        spacing: 4
-                                        
-                                        Repeater {
-                                            model: categories[modelData].binds
+                                    clip: true // Важно для корректного отображения прокрутки
+
+                                    Flickable {
+                                        id: bindsFlickable
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        contentWidth: parent.width - 16
+                                        contentHeight: bindsContent.implicitHeight
+                                        boundsBehavior: Flickable.StopAtBounds
+                                        clip: true
+
+                                        ColumnLayout {
+                                            id: bindsContent
+                                            width: parent.width
+                                            spacing: 4
                                             
-                                            Rectangle {
-                                                Layout.fillWidth: true
-                                                height: 36
-                                                radius: 6
-                                                color: index % 2 === 0 ? "transparent" : Qt.lighter(Color.mSurfaceVariant, 1.1)
+                                            // Тот же самый Repeater с биндами остается здесь
+                                            Repeater {
+                                                model: categories[modelData].binds
                                                 
-                                                RowLayout {
-                                                    anchors.fill: parent
-                                                    anchors.margins: 8
-                                                    spacing: Style.marginM
+                                                Rectangle {
+                                                    Layout.fillWidth: true
+                                                    height: 36
+                                                    radius: 6
+                                                    color: index % 2 === 0 ? "transparent" : Qt.lighter(Color.mSurfaceVariant, 1.1)
                                                     
-                                                    Flow {
-                                                        Layout.preferredWidth: 180
-                                                        Layout.alignment: Qt.AlignVCenter
-                                                        spacing: 4
+                                                    RowLayout {
+                                                        anchors.fill: parent
+                                                        anchors.margins: 8
+                                                        spacing: Style.marginM
                                                         
-                                                        Repeater {
-                                                            model: modelData.keys.split(" + ")
-                                                            Rectangle {
-                                                                width: Math.max(keyText.implicitWidth + 12, 28)
-                                                                height: 24
-                                                                color: pluginApi?.mainInstance?.getKeyColor(modelData) || Qt.lighter(Color.mPrimary, 1.3)
-                                                                radius: 4
-                                                                
-                                                                NText {
-                                                                    id: keyText
-                                                                    anchors.centerIn: parent
-                                                                    text: modelData
-                                                                    font.pointSize: {
-                                                                        if (modelData.length > 12) return 8;
-                                                                        if (modelData.length > 8) return 9;
-                                                                        return 10;
+                                                        Flow {
+                                                            Layout.preferredWidth: 180
+                                                            Layout.alignment: Qt.AlignVCenter
+                                                            spacing: 4
+                                                            
+                                                            Repeater {
+                                                                model: modelData.keys.split(" + ")
+                                                                Rectangle {
+                                                                    width: Math.max(keyText.implicitWidth + 12, 28)
+                                                                    height: 24
+                                                                    color: pluginApi?.mainInstance?.getKeyColor(modelData) || Qt.lighter(Color.mPrimary, 1.3)
+                                                                    radius: 4
+                                                                    
+                                                                    NText {
+                                                                        id: keyText
+                                                                        anchors.centerIn: parent
+                                                                        text: modelData
+                                                                        font.pointSize: {
+                                                                            if (modelData.length > 12) return 8;
+                                                                            if (modelData.length > 8) return 9;
+                                                                            return 10;
+                                                                        }
+                                                                        font.weight: Font.Medium
+                                                                        color: Color.mOnPrimary
                                                                     }
-                                                                    font.weight: Font.Medium
-                                                                    color: Color.mOnPrimary
                                                                 }
                                                             }
                                                         }
-                                                    }
-                                                    
-                                                    NText {
-                                                        Layout.fillWidth: true
-                                                        Layout.alignment: Qt.AlignVCenter
-                                                        text: modelData.desc
-                                                        font.pointSize: 11
-                                                        color: Color.mOnSurface
-                                                        wrapMode: Text.WrapAnywhere
-                                                        maximumLineCount: 2
-                                                        elide: Text.ElideRight
+                                                        
+                                                        NText {
+                                                            Layout.fillWidth: true
+                                                            Layout.alignment: Qt.AlignVCenter
+                                                            text: modelData.desc
+                                                            font.pointSize: 11
+                                                            color: Color.mOnSurface
+                                                            wrapMode: Text.WrapAnywhere
+                                                            maximumLineCount: 2
+                                                            elide: Text.ElideRight
+                                                        }
                                                     }
                                                 }
                                             }
+                                            
+                                            NText {
+                                                Layout.fillWidth: true
+                                                Layout.topMargin: 12
+                                                Layout.bottomMargin: 12
+                                                horizontalAlignment: Text.AlignHCenter
+                                                text: pluginApi?.tr("panel.no_binds") || "No keybindings"
+                                                font.pointSize: 10
+                                                color: Color.mOnSurfaceVariant
+                                                visible: categories[modelData].binds.length === 0
+                                            }
                                         }
                                         
-                                        NText {
-                                            Layout.fillWidth: true
-                                            Layout.topMargin: 12
-                                            Layout.bottomMargin: 12
-                                            horizontalAlignment: Text.AlignHCenter
-                                            text: pluginApi?.tr("panel.no_binds") || "No keybindings"
-                                            font.pointSize: 10
-                                            color: Color.mOnSurfaceVariant
-                                            visible: categories[modelData].binds.length === 0
+                                        ScrollBar.vertical: ScrollBar {
+                                            width: 8
+                                            policy: ScrollBar.AsNeeded
+                                            visible: bindsFlickable.contentHeight > bindsFlickable.height
                                         }
                                     }
                                 }

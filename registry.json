@@ -37,7 +37,7 @@
         {
       "id": "hyprland-cheatsheet",
       "name": "Keybind Cheatsheet (Hyprland)",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "author": "blacku",
       "description": "Dynamic keyboard shortcuts cheatsheet that reads and displays Hyprland keybindings. Requires Hyprland window manager.",
       "repository": "https://github.com/Qvarta/Pluggins",
