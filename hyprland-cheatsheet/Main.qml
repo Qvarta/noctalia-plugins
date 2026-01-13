@@ -38,7 +38,6 @@ Item {
   
   onPluginApiChanged: {
     if (pluginApi) {
-      // Экспортируем функции через pluginApi
       pluginApi.mainInstance = root;
       checkAndGenerate();
     }
@@ -66,13 +65,11 @@ Item {
       for (var i = 0; i < lines.length; i++) {
           var line = lines[i].trim();
           
-          // Определяем категорию (заголовок)
           if (line.startsWith("#") && line.match(/#\s*\d+\./)) {
               if (currentCat) cats.push(currentCat);
               var title = line.replace(/#\s*\d+\.\s*/, "").trim();
               currentCat = { "title": title, "binds": [] };
           } 
-          // Обрабатываем обычные bind и bindm (mouse) строки
           else if ((line.includes("bind") || line.includes("bindm")) && line.includes('#"')) {
               if (currentCat) {
                   var descMatch = line.match(/#"(.*?)"$/);
@@ -83,10 +80,8 @@ Item {
                       var bindPart = parts[0].trim();
                       var keyPart = parts[1].trim();
                       
-                      // Обрабатываем bindm специально для мышиных биндов
                       var mod = "";
                       
-                      // Обрабатываем модификаторы
                       if (bindPart.includes("$mod")) mod = "Super";
                       if (bindPart.includes("SHIFT")) mod += (mod ? " + Shift" : "Shift");
                       if (bindPart.includes("CTRL")) mod += (mod ? " + Ctrl" : "Ctrl");
@@ -94,19 +89,16 @@ Item {
                       
                       var key = "";
                       
-                      // Обрабатываем мышиные кнопки (mouse:272, mouse:273 и т.д.)
                       if (keyPart.includes("mouse:")) {
                           var mouseMatch = keyPart.match(/mouse:(\d+)/);
                           if (mouseMatch) {
                               var mouseButton = mouseMatch[1];
                               key = "MOUSE " + mouseButton;
-                              // Можно добавить специальные имена для известных кнопок
                               if (mouseButton === "272") key = "MOUSE LEFT";
                               else if (mouseButton === "273") key = "MOUSE RIGHT";
                               else if (mouseButton === "274") key = "MOUSE MIDDLE";
                           }
                       } else {
-                          // Обрабатываем обычные клавиши
                           key = keyPart.toUpperCase();
                       }
                       
