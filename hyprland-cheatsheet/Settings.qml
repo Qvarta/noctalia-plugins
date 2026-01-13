@@ -10,7 +10,7 @@ ColumnLayout {
     property var pluginApi: null
     spacing: Style.marginL
 
-    property string configFile: "" 
+    property string configFile: pluginApi?.pluginSettings?.config
 
     Rectangle {
         Layout.fillWidth: true
@@ -62,9 +62,9 @@ ColumnLayout {
 
                 NText {
                     text: {
-                        if (root.stationFile) {
-                            var fileName = root.stationFile.split('/').pop();
-                            return fileName.length > 20 ? fileName.substring(0, 20) + "..." : fileName;
+                        if (root.configFile) {
+                            var parts = root.configFile.split('/')
+                            return parts[parts.length - 1]
                         }
                         return pluginApi?.tr("fileNotExist");
                     }
