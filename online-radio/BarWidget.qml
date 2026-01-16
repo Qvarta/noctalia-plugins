@@ -35,6 +35,36 @@ Item {
         onClicked: {
             pluginApi.openPanel(root.screen,this);
         }
+        onRightClicked:{
+            var popupMenuWindow = PanelService.getPopupMenuWindow(screen);
+            if (popupMenuWindow) {
+                popupMenuWindow.showContextMenu(contextMenu);
+                contextMenu.openAtItem(root, screen);
+            }
+        }
+    }
+
+    NPopupContextMenu {
+        id: contextMenu
+
+        model: [
+            {
+                "label": I18n.tr("actions.widget-settings"),
+                "action": "widget-settings",
+                "icon": "settings"
+            },
+        ]
+
+        onTriggered: action => {
+            var popupMenuWindow = PanelService.getPopupMenuWindow(screen);
+            if (popupMenuWindow) {
+                popupMenuWindow.close();
+            }
+
+            if (action === "widget-settings") {
+                BarService.openPluginSettings(screen, pluginApi.manifest);
+            }
+        }
     }
 }
 
