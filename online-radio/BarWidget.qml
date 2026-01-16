@@ -29,7 +29,7 @@ Item {
         text: currentPlayingStation === "" ? pluginApi?.tr("notSelected") : currentPlayingStation
         autoHide: false
         forceOpen: false
-        forceClose: false
+        forceClose: true
         tooltipText: "Radio"
         
         onClicked: {
