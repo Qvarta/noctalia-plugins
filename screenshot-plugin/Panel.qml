@@ -1,262 +1,160 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell
 import qs.Commons
 import qs.Widgets
 
 Item {
     id: root
     property var pluginApi: null
-    property var rawCategories: pluginApi?.pluginSettings?.cheatsheetData || []
-    property var categories: rawCategories
     
-    property int columnCount: {
-        if (width < 800) return 1;
-        if (width < 1200) return 2;
-        return 3;
-    }
-    
-    onRawCategoriesChanged: {
-        updateColumnItems();
-    }
-    
-    function updateColumnItems() {
-        var columns = [];
-        for (var i = 0; i < columnCount; i++) {
-            columns.push([]);
-        }
+    readonly property var geometryPlaceholder: panelContainer
+    property real contentPreferredWidth: 250 * Style.uiScaleRatio
+    property real contentPreferredHeight: 340 * Style.uiScaleRatio
+    readonly property bool allowAttach: true
+
+    anchors.fill: parent
+
+    component ActionButton: Rectangle {
+        id: buttonRoot
+        property string iconName: ""
+        property string text: ""
+        property string actionType: ""
+        property var mouseArea: mouseArea
         
-        var sortedCategories = [];
-        for (var i = 0; i < categories.length; i++) {
-            sortedCategories.push({
-                index: i,
-                bindCount: categories[i].binds.length
-            });
-        }
+        width: parent.width
+        height: 64
+        radius: Style.radiusS
+        color: mouseArea.containsPress ? Color.mSurfaceVariant : 
+               mouseArea.containsMouse ? Qt.darker(Color.mSurface, 1.05) : 
+               Color.mSurface
+        border.width: Style.borderS
+        border.color: mouseArea.containsMouse ? Color.mOutline : Color.mSurface
         
-        sortedCategories.sort((a, b) => b.bindCount - a.bindCount);
-        
-        var columnHeights = new Array(columnCount).fill(0);
-        
-        for (var i = 0; i < sortedCategories.length; i++) {
-            var catIndex = sortedCategories[i].index;
-            var weight = categories[catIndex].binds.length + 1;
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: Style.marginM
+            spacing: Style.marginM
             
-            var minHeight = columnHeights[0];
-            var minColumn = 0;
-            for (var c = 1; c < columnCount; c++) {
-                if (columnHeights[c] < minHeight) {
-                    minHeight = columnHeights[c];
-                    minColumn = c;
-                }
+            NIcon {
+                Layout.alignment: Qt.AlignVCenter
+                icon: buttonRoot.iconName
+                color: Color.mPrimary
+                pointSize: 20  
+                applyUiScale: true
             }
             
-            columns[minColumn].push(catIndex);
-            columnHeights[minColumn] += weight;
+            NText {
+                Layout.alignment: Qt.AlignVCenter
+                text: buttonRoot.text
+                color: Color.mOnSurface
+                font.pointSize: Style.fontSizeM
+                font.weight: Font.Medium
+            }
+            
+            Item {
+                Layout.fillWidth: true
+            }
+            
+            NIcon {
+                Layout.alignment: Qt.AlignVCenter
+                icon: "chevron-right"
+                color: Color.mOnSurfaceVariant
+                pointSize: 16  
+                applyUiScale: true
+            }
         }
         
-        columnRepeater.model = columnCount;
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            
+            onClicked: {
+                if (pluginApi && pluginApi.mainInstance && buttonRoot.actionType) {
+                    pluginApi.mainInstance.takeScreenshot(buttonRoot.actionType);
+                }
+            }
+        }
     }
-    
-    property real contentPreferredWidth: 1300
-    property real contentPreferredHeight: 880
-    readonly property var geometryPlaceholder: panelContainer
-    readonly property bool allowAttach: false 
-    readonly property bool panelAnchorHorizontalCenter: true
-    readonly property bool panelAnchorVerticalCenter: true
-    anchors.fill: parent
-    
+
     Rectangle {
         id: panelContainer
         anchors.fill: parent
         color: Color.mSurface
-        radius: Style.radiusL
-        clip: true
+        radius: Style.radiusM
         
-        NText {
-            id: emptyText
-            anchors.centerIn: parent
-            text: pluginApi?.tr("panel.no_data") || "No data available"
-            font.pointSize: Style.fontSizeL
-            color: Color.mOnSurface
-            visible: categories.length === 0
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
-            width: parent.width * 0.8
-        }
-        
-        GridLayout {
-            id: mainLayout
-            visible: root.categories.length > 0
-            anchors.fill: parent
-            anchors.margins: Style.marginL
-            columns: columnCount
-            columnSpacing: Style.marginL
-            rowSpacing: Style.marginM
-            
-            Repeater {
-                id: columnRepeater
-                model: columnCount
+        ColumnLayout {
+            anchors {
+                fill: parent
+                margins: Style.marginM
+            }
+            spacing: Style.marginM
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginM
+                
+                Rectangle {
+                    width: 48
+                    height: 48
+                    radius: 24
+                    color: Color.mSurfaceVariant
+                    
+                    NIcon {
+                        anchors.centerIn: parent
+                        icon: "screenshot"
+                        color: Color.mPrimary
+                        pointSize: 24  
+                        applyUiScale: true
+                    }
+                }
                 
                 ColumnLayout {
-                    id: column
+                    spacing: Style.marginXS
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.alignment: Qt.AlignTop
-                    spacing: Style.marginM
                     
-                    property var columnCategories: {
-                        var result = [];
-                        var categoriesPerColumn = Math.ceil(categories.length / columnCount);
-                        var startIndex = index * categoriesPerColumn;
-                        var endIndex = Math.min(startIndex + categoriesPerColumn, categories.length);
-                        
-                        for (var i = startIndex; i < endIndex; i++) {
-                            result.push(i);
-                        }
-                        return result;
+                    NText {
+                        text: pluginApi?.tr("titleLabel")
+                        color: Color.mOnSurface
+                        font.pointSize: Style.fontSizeL
+                        font.weight: Font.Bold
                     }
                     
-                    Repeater {
-                        model: column.columnCategories
-                        
-                        Rectangle {
-                            id: categoryContainer
-                            Layout.fillWidth: true
-                            Layout.minimumHeight: categoryContent.implicitHeight + 24
-                            radius: 12
-                            color: Color.mSurfaceVariant
-                            opacity: 0.9
-                            
-                            ColumnLayout {
-                                id: categoryContent
-                                width: parent.width - 24
-                                anchors.centerIn: parent
-                                spacing: 0
-                                
-                                Rectangle {
-                                    id: categoryHeader
-                                    Layout.fillWidth: true
-                                    height: 50
-                                    radius: 8
-                                    color: Qt.lighter(Color.mSurfaceVariant, 1.2)
-                                    
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 12
-                                        spacing: Style.marginS
-                                        
-                                    NIcon {
-                                        icon: pluginApi?.mainInstance?.getCategoryIcon(categories[modelData].title) || "keyboard-filled"
-                                        pointSize: 22
-                                        color: Color.mOnSurfaceVariant
-                                    }
-                                        
-                                        NText {
-                                            text: categories[modelData].title
-                                            font.pointSize: 12
-                                            font.weight: Font.Medium
-                                            color: Color.mOnSurfaceVariant
-                                            Layout.fillWidth: true
-                                            wrapMode: Text.WordWrap
-                                            elide: Text.ElideRight
-                                            maximumLineCount: 2
-                                        }
-                                    }
-                                }
-                                
-                                Rectangle {
-                                    id: bindsContainer
-                                    Layout.fillWidth: true
-                                    Layout.topMargin: 12
-                                    Layout.preferredHeight: bindsContent.implicitHeight + 16
-                                    radius: 8
-                                    color: Color.mSurface
-                                    
-                                    ColumnLayout {
-                                        id: bindsContent
-                                        width: parent.width - 16
-                                        anchors.centerIn: parent
-                                        spacing: 4
-                                        
-                                        Repeater {
-                                            model: categories[modelData].binds
-                                            
-                                            Rectangle {
-                                                Layout.fillWidth: true
-                                                height: 36
-                                                radius: 6
-                                                color: index % 2 === 0 ? "transparent" : Qt.lighter(Color.mSurfaceVariant, 1.1)
-                                                
-                                                RowLayout {
-                                                    anchors.fill: parent
-                                                    anchors.margins: 8
-                                                    spacing: Style.marginM
-                                                    
-                                                    Flow {
-                                                        Layout.preferredWidth: 180
-                                                        Layout.alignment: Qt.AlignVCenter
-                                                        spacing: 4
-                                                        
-                                                        Repeater {
-                                                            model: modelData.keys.split(" + ")
-                                                            Rectangle {
-                                                                width: Math.max(keyText.implicitWidth + 12, 28)
-                                                                height: 24
-                                                                color: pluginApi?.mainInstance?.getKeyColor(modelData) || Qt.lighter(Color.mPrimary, 1.3)
-                                                                radius: 4
-                                                                
-                                                                NText {
-                                                                    id: keyText
-                                                                    anchors.centerIn: parent
-                                                                    text: modelData
-                                                                    font.pointSize: {
-                                                                        if (modelData.length > 12) return 8;
-                                                                        if (modelData.length > 8) return 9;
-                                                                        return 10;
-                                                                    }
-                                                                    font.weight: Font.Medium
-                                                                    color: Color.mOnPrimary
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                    
-                                                    NText {
-                                                        Layout.fillWidth: true
-                                                        Layout.alignment: Qt.AlignVCenter
-                                                        text: modelData.desc
-                                                        font.pointSize: 11
-                                                        color: Color.mOnSurface
-                                                        wrapMode: Text.WrapAnywhere
-                                                        maximumLineCount: 2
-                                                        elide: Text.ElideRight
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        
-                                        NText {
-                                            Layout.fillWidth: true
-                                            Layout.topMargin: 12
-                                            Layout.bottomMargin: 12
-                                            horizontalAlignment: Text.AlignHCenter
-                                            text: pluginApi?.tr("panel.no_binds") || "No keybindings"
-                                            font.pointSize: 10
-                                            color: Color.mOnSurfaceVariant
-                                            visible: categories[modelData].binds.length === 0
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    NText {
+                        text: pluginApi?.tr("titleSubLabel")
+                        color: Color.mOnSurfaceVariant
+                        font.pointSize: Style.fontSizeS
                     }
-                    
-                    Item {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                    }
+                }
+            }
+
+            NDivider {
+                Layout.fillWidth: true
+            }
+
+            Column {
+                id: buttonsColumn
+                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
+                spacing: Style.marginM
+                
+                ActionButton {
+                    iconName: "screenshot"
+                    text: pluginApi?.tr("windowLabel")
+                    actionType: "output"
+                }
+                
+                ActionButton {
+                    iconName: "crop"
+                    text: pluginApi?.tr("areaLabel")
+                    actionType: "region"
+                }
+                
+                ActionButton {
+                    iconName: "zoom-in-area"
+                    text: pluginApi?.tr("activeWindowLabel")
+                    actionType: "window"
                 }
             }
         }
