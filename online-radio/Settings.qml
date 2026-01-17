@@ -47,11 +47,6 @@ ColumnLayout {
                 spacing: Style.marginL
                 Layout.fillWidth: true
                 
-                NLabel {
-                    description: pluginApi?.tr("iconDescription") 
-                    Layout.fillWidth: true
-                }
-
                 Rectangle {
                     width: 40
                     height: 40
@@ -62,8 +57,8 @@ ColumnLayout {
                         anchors.centerIn: parent
                         icon: root.currentIconName
                         color: Color.mPrimary
-                        width: 24
-                        height: 24
+                        pointSize: 24  
+                        applyUiScale: true
                     }
                 }
 
@@ -71,6 +66,7 @@ ColumnLayout {
                     text: root.currentIconName
                     color: Color.mOnSurfaceVariant
                     font.pointSize: Style.fontSizeS
+                    Layout.fillWidth: true
                 }
 
                 NButton {
@@ -119,14 +115,9 @@ ColumnLayout {
                 spacing: Style.marginL
                 Layout.fillWidth: true
                 
-                NLabel {
-                    description:  pluginApi?.tr("fileDescription")
-                    Layout.fillWidth: true
-                }
-
                 Rectangle {
-                    width: 40
-                    height: 40
+                    width: 44
+                    height: 44
                     radius: Style.radiusS
                     color: Color.mSurface
                     
@@ -134,8 +125,8 @@ ColumnLayout {
                         anchors.centerIn: parent
                         icon: "json"
                         color: Color.mPrimary
-                        width: 24
-                        height: 24
+                        pointSize: 24  
+                        applyUiScale: true
                     }
                 }
 

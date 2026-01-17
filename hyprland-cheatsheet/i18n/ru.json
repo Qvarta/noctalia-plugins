@@ -19,5 +19,10 @@
     "stderr": "STDERR",
     "file_empty": "ФАЙЛ ПУСТ",
     "file_no_data": "Файл не содержит данных"
-  }
+  },
+  "fileTitle": "Загрузить из файла",
+  "fileDescription": "Формат файла в README.md",
+  "fileNotExist":"Файл не выбран",
+  "fileSelect":"Выбрать файл",
+  "fileSelectTitle":"Выберите файл со списком биндов"
 }

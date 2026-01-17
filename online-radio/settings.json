@@ -1,6 +1,6 @@
 {
-  "currentPlayingStation": "Эльдорадио",
-  "currentPlayingProcessState": "start",
+  "currentPlayingStation": "",
+  "currentPlayingProcessState": "",
   "currentIconName": "activity-heartbeat",
   "station_count": 23,
   "stations_json": "/home/ko/.config/test/stations.json",

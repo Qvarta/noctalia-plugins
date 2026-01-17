@@ -19,5 +19,10 @@
     "stderr": "STDERR",
     "file_empty": "FILE EMPTY",
     "file_no_data": "File contains no data"
-  }
+  },
+  "fileTitle": "Load from file",
+  "fileDescription": "File format described in README.md",
+  "fileNotExist": "File not selected",
+  "fileSelect": "Select file",
+  "fileSelectTitle": "Select config file"
 }

@@ -40,11 +40,6 @@ ColumnLayout {
                 spacing: Style.marginL
                 Layout.fillWidth: true
                 
-                NLabel {
-                    description:  pluginApi?.tr("fileDescription")
-                    Layout.fillWidth: true
-                }
-
                 Rectangle {
                     width: 40
                     height: 40
@@ -55,8 +50,8 @@ ColumnLayout {
                         anchors.centerIn: parent
                         icon: "file-settings"
                         color: Color.mPrimary
-                        width: 24
-                        height: 24
+                        pointSize: 24  
+                        applyUiScale: true
                     }
                 }
 
@@ -68,7 +63,7 @@ ColumnLayout {
                         }
                         return pluginApi?.tr("fileNotExist");
                     }
-                    font.pointSize: Style.fontSizeS
+                    font.pointSize: Style.fontSizeM
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
