@@ -11,7 +11,7 @@ Item {
     
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 280 * Style.uiScaleRatio
-    property real contentPreferredHeight: 400 * Style.uiScaleRatio
+    property real contentPreferredHeight: 520 * Style.uiScaleRatio
     readonly property bool allowAttach: true
     property int itemHeight: 56
 
@@ -173,23 +173,6 @@ Item {
                                 color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Color.mOnPrimary : Color.mOnSurfaceVariant
                                 font.pointSize: Style.fontSizeS
                                 font.weight: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Font.Bold : Font.Normal
-                            }
-                            
-                            // Счетчик избранных
-                            Rectangle {
-                                visible: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.favoriteApps.length > 0
-                                width: 16
-                                height: 16
-                                radius: 8
-                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Color.mOnPrimary : Color.mPrimary
-                                
-                                NText {
-                                    anchors.centerIn: parent
-                                    text: pluginApi && pluginApi.mainInstance ? pluginApi.mainInstance.favoriteApps.length : 0
-                                    color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Color.mPrimary : Color.mOnPrimary
-                                    font.pointSize: Style.fontSizeXS
-                                    font.bold: true
-                                }
                             }
                         }
                     }
