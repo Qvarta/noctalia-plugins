@@ -22,5 +22,5 @@ Connects to localhost:9091 by default.
 ## Components
 
 - **BarWidget.qml**: Compact widget shown in the system bar
-- **Panel.qml**: Expanded panel showing list torrentы
+- **Panel.qml**: Expanded panel showing list torrents
 - **Main.qml**: Core logic
