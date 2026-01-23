@@ -59,7 +59,7 @@
     {
       "id": "torrent-plugin",
       "name": "Torrent Plugin",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "author": "Qvarta",
       "description": "Виджет для просмотра и управления torrent-клиентом Transmission",
       "license": "MIT",

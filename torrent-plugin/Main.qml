@@ -14,13 +14,27 @@ Item {
     property string errorMessage: ""
     property var processOutput: []
     
+    property bool daemonRunning: false
+    property bool checkingDaemon: false
+    
     Timer {
         id: refreshTimer
-        interval: pluginApi?.manifest?.metadata?.refreshInterval
-        running: true
+        interval: 5000
+        running: false
         repeat: true
         onTriggered: {
             root.refreshTorrents();
+        }
+    }
+    
+    // Таймер для задержки проверки после запуска демона
+    Timer {
+        id: checkAfterStartTimer
+        interval: 2000
+        running: false
+        repeat: false
+        onTriggered: {
+            root.checkDaemonStatus();
         }
     }
     
@@ -43,8 +57,13 @@ Item {
             if (exitCode === 0 && root.processOutput.length > 0) {
                 var fullOutput = root.processOutput.join("\n");
                 parseAndUpdateTorrents(fullOutput);
+                root.daemonRunning = true;
+                root.errorMessage = "";
+                if (!refreshTimer.running) refreshTimer.start();
             } else if (exitCode !== 0) {
-                root.errorMessage = "Ошибка (код: " + exitCode + ")";
+                root.daemonRunning = false;
+                root.errorMessage = "Демон не запущен";
+                refreshTimer.stop();
             }
             
             root.isLoading = false;
@@ -52,7 +71,117 @@ Item {
         }
     }
     
-    // Парсинг вывода transmission-remote
+    // Функция запуска демона
+    function startDaemon() {
+        Logger.i("Transmission", "Запуск transmission-daemon");
+        root.isLoading = true;
+        root.errorMessage = "";
+        
+        var startProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                command: ["transmission-daemon", "--foreground"]
+                running: true
+                onExited: function(exitCode) {
+                    Logger.i("Transmission", "Демон завершился с кодом: " + exitCode);
+                    root.isLoading = false;
+                }
+            }
+        `, root);
+        
+        // Запускаем таймер для проверки через 2 секунды
+        checkAfterStartTimer.start();
+    }
+    
+    // Функция остановки демона
+    function stopDaemon() {
+        Logger.i("Transmission", "Остановка transmission-daemon");
+        root.isLoading = true;
+        
+        var stopProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                id: stopProc
+                command: ["transmission-remote", "--exit"]
+                running: true
+                
+                onExited: function(exitCode) {
+                    if (exitCode === 0) {
+                        Logger.i("Transmission", "Демон остановлен через --exit");
+                        root.daemonRunning = false;
+                        root.torrentModel.clear();
+                        root.errorMessage = "Демон остановлен";
+                        refreshTimer.stop();
+                        root.isLoading = false;
+                    } else {
+                        Logger.i("Transmission", "Не удалось остановить демон, пробуем kill");
+                        // Запускаем процесс kill
+                        var killProcess = Qt.createQmlObject('
+                            import QtQuick
+                            import Quickshell
+                            import Quickshell.Io
+                            Process {
+                                command: ["pkill", "-f", "transmission-daemon"]
+                                running: true
+                                onExited: function(killExitCode) {
+                                    Logger.i("Transmission", "Демон убит через pkill: " + killExitCode);
+                                    root.daemonRunning = false;
+                                    root.torrentModel.clear();
+                                    root.errorMessage = "Демон остановлен";
+                                    refreshTimer.stop();
+                                    root.isLoading = false;
+                                }
+                            }
+                        ', stopProc);
+                    }
+                }
+            }
+        `, root);
+    }
+    
+    // Проверка статуса демона
+    function checkDaemonStatus() {
+        if (root.checkingDaemon) return;
+        
+        root.checkingDaemon = true;
+        Logger.i("Transmission", "Проверка статуса демона через подключение");
+        
+        var checkProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                command: ["transmission-remote", "--session-info"]
+                running: true
+                
+                onExited: function(exitCode) {
+                    root.checkingDaemon = false;
+                    if (exitCode === 0) {
+                        Logger.i("Transmission", "Демон активен и отвечает");
+                        root.daemonRunning = true;
+                        root.errorMessage = "";
+                        if (!refreshTimer.running) {
+                            refreshTimer.start();
+                            root.refreshTorrents();
+                        }
+                    } else {
+                        Logger.i("Transmission", "Демон не отвечает");
+                        root.daemonRunning = false;
+                        root.errorMessage = "Демон не запущен";
+                        refreshTimer.stop();
+                    }
+                }
+            }
+        `, root);
+    }
+    
     function parseAndUpdateTorrents(output) {
         var lines = output.trim().split('\n');
         var foundTorrents = [];
@@ -194,7 +323,7 @@ Item {
     }
     
     function refreshTorrents() {
-        if (!transmissionProcess.running) {
+        if (!transmissionProcess.running && root.daemonRunning) {
             transmissionProcess.running = true;
         }
     }
@@ -202,19 +331,18 @@ Item {
     Component.onCompleted: {
         if (pluginApi) {
             pluginApi.mainInstance = root;
-            refreshTorrents();
+            root.checkDaemonStatus();
         }
     }
     
-    // IPC обработчик для открытия панели
     IpcHandler {
-        target: "plugin: torrent-plugin"
+        target: "plugin:transmission-widget"
         
         function toggle() {
             if (pluginApi) {
                 pluginApi.withCurrentScreen(screen => {
                     pluginApi.openPanel(screen, this);
-                    root.refreshTorrents();
+                    root.checkDaemonStatus();
                 });
             }
         }

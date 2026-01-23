@@ -16,10 +16,10 @@ Item {
     property ListModel torrentModel: pluginApi?.mainInstance?.torrentModel || null
     property bool isLoading: pluginApi?.mainInstance?.isLoading || false
     property string errorMessage: pluginApi?.mainInstance?.errorMessage || ""
+    property bool daemonRunning: pluginApi?.mainInstance?.daemonRunning || false
     
     anchors.fill: parent
     
-    // Компонент элемента торрента
     component TorrentItem: Rectangle {
         id: torrentRoot
         property int torrentId: 0
@@ -144,7 +144,6 @@ Item {
         }
     }
     
-    // Основной контейнер панели
     Rectangle {
         id: panelContainer
         anchors.fill: parent
@@ -171,7 +170,7 @@ Item {
                     NIcon {
                         anchors.centerIn: parent
                         icon: "download"
-                        color: Color.mPrimary
+                        color: daemonRunning ? Color.mPrimary : Color.mOnSurfaceVariant
                         pointSize: 24
                         applyUiScale: true
                     }
@@ -182,7 +181,7 @@ Item {
                     Layout.fillWidth: true
                     
                     NText {
-                        text: pluginApi?.tr("tooltipLabel")
+                        text: "Торренты"
                         color: Color.mOnSurface
                         font.pointSize: Style.fontSizeL
                         font.weight: Font.Bold
@@ -190,12 +189,49 @@ Item {
                     
                     NText {
                         text: {
+                            if (!daemonRunning) return "Демон не запущен";
                             if (!torrentModel) return "Загрузка...";
-                            if (errorMessage) return "Ошибка подключения";
+                            if (errorMessage) return errorMessage;
                             return torrentModel.count + " активных";
                         }
-                        color: errorMessage ? Color.mError : Color.mOnSurfaceVariant
+                        color: errorMessage || !daemonRunning ? Color.mError : Color.mOnSurfaceVariant
                         font.pointSize: Style.fontSizeS
+                    }
+                }
+                
+                // Кнопка запуска/остановки демона
+                Rectangle {
+                    id: daemonButton
+                    width: 40
+                    height: 40
+                    radius: 20
+                    color: daemonButtonMouseArea.containsPress ? Color.mSurfaceVariant : 
+                           daemonButtonMouseArea.containsMouse ? Color.mSurfaceVariant : 
+                           "transparent"
+                    
+                    NIcon {
+                        anchors.centerIn: parent
+                        icon: daemonRunning ? "player-stop" : "player-play"
+                        color: daemonRunning ? Color.mError : Color.mPrimary
+                        pointSize: 20
+                        applyUiScale: true
+                    }
+                    
+                    MouseArea {
+                        id: daemonButtonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        
+                        onClicked: {
+                            if (pluginApi?.mainInstance) {
+                                if (daemonRunning) {
+                                    pluginApi.mainInstance.stopDaemon();
+                                } else {
+                                    pluginApi.mainInstance.startDaemon();
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -209,6 +245,90 @@ Item {
                 Layout.fillHeight: true
                 color: "transparent"
                 
+                // Состояние: демон не запущен
+                Loader {
+                    anchors.fill: parent
+                    active: !daemonRunning && !isLoading
+                    
+                    sourceComponent: ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: Style.marginM
+                        
+                        NIcon {
+                            Layout.alignment: Qt.AlignHCenter
+                            icon: "power"
+                            color: Color.mError
+                            pointSize: 64
+                            applyUiScale: true
+                        }
+                        
+                        NText {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: "Демон Transmission не запущен"
+                            color: Color.mError
+                            font.pointSize: Style.fontSizeM
+                            font.weight: Font.Bold
+                        }
+                        
+                        NText {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.maximumWidth: parent.width * 0.7
+                            text: "Запустите демон для просмотра торрентов"
+                            color: Color.mOnSurfaceVariant
+                            font.pointSize: Style.fontSizeS
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        
+                        Rectangle {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.topMargin: Style.marginL
+                            width: 180
+                            height: 50
+                            radius: 8
+                            color: startButtonMouseArea.containsPress ? Color.mSurfaceVariant : 
+                                   startButtonMouseArea.containsMouse ? Qt.darker(Color.mSurface, 1.1) : 
+                                   Color.mSurfaceVariant
+                            
+                            border.width: 1
+                            border.color: Color.mPrimary
+                            
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: Style.marginS
+                                
+                                NIcon {
+                                    icon: "player-play"
+                                    color: Color.mPrimary
+                                    pointSize: 18
+                                    applyUiScale: true
+                                }
+                                
+                                NText {
+                                    text: "Запустить демон"
+                                    color: Color.mPrimary
+                                    font.pointSize: Style.fontSizeS
+                                    font.weight: Font.Medium
+                                }
+                            }
+                            
+                            MouseArea {
+                                id: startButtonMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                
+                                onClicked: {
+                                    if (pluginApi?.mainInstance) {
+                                        pluginApi.mainInstance.startDaemon();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Состояние загрузки
                 Loader {
                     anchors.fill: parent
                     active: isLoading && (!torrentModel || torrentModel.count === 0)
@@ -234,35 +354,10 @@ Item {
                     }
                 }
                 
-                Loader {
-                    anchors.fill: parent
-                    active: errorMessage && (!torrentModel || torrentModel.count === 0)
-                    
-                    sourceComponent: ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: Style.marginM
-                        
-                        NIcon {
-                            Layout.alignment: Qt.AlignHCenter
-                            icon: "alert-circle"
-                            color: Color.mError
-                            pointSize: 48
-                            applyUiScale: true
-                        }
-                        
-                        NText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Ошибка подключения"
-                            color: Color.mError
-                            font.pointSize: Style.fontSizeM
-                            font.weight: Font.Bold
-                        }
-                    }
-                }
-                
+                // Список торрентов (когда демон работает)
                 ScrollView {
                     anchors.fill: parent
-                    visible: torrentModel && torrentModel.count > 0
+                    visible: daemonRunning && torrentModel && torrentModel.count > 0
                     
                     ListView {
                         id: torrentListView
@@ -282,7 +377,7 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             color: "transparent"
-                            visible: torrentModel && torrentModel.count === 0 && !isLoading && !errorMessage
+                            visible: torrentModel && torrentModel.count === 0 && !isLoading
                             
                             ColumnLayout {
                                 anchors.centerIn: parent
