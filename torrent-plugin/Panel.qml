@@ -9,8 +9,8 @@ Item {
     property var pluginApi: null
     
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 450 * Style.uiScaleRatio
-    property real contentPreferredHeight: 600 * Style.uiScaleRatio
+    property real contentPreferredWidth: 350 * Style.uiScaleRatio
+    property real contentPreferredHeight: 500 * Style.uiScaleRatio
     readonly property bool allowAttach: true
     
     property ListModel torrentModel: pluginApi?.mainInstance?.torrentModel || null
@@ -157,22 +157,42 @@ Item {
             }
             spacing: Style.marginM
             
+            // ЗАГОЛОВОК ПАНЕЛИ - только кнопка управления слева
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Style.marginM
                 
+                // Кнопка запуска/остановки демона - теперь слева вместо иконки
                 Rectangle {
+                    id: daemonButton
                     width: 48
                     height: 48
-                    radius: 24
-                    color: Qt.darker(Color.mSurface, 1.2)
+                    radius: 8
+                    color: Color.mSurfaceVariant
                     
                     NIcon {
                         anchors.centerIn: parent
-                        icon: "download"
-                        color: daemonRunning ? Color.mPrimary : Color.mOnSurfaceVariant
+                        icon: daemonRunning ? "player-stop" : "player-play"
+                        color: daemonRunning ? Color.mError : Color.mHover
                         pointSize: 24
                         applyUiScale: true
+                    }
+                    
+                    MouseArea {
+                        id: daemonButtonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        
+                        onClicked: {
+                            if (pluginApi?.mainInstance) {
+                                if (daemonRunning) {
+                                    pluginApi.mainInstance.stopDaemon();
+                                } else {
+                                    pluginApi.mainInstance.startDaemon();
+                                }
+                            }
+                        }
                     }
                 }
                 
@@ -198,48 +218,13 @@ Item {
                         font.pointSize: Style.fontSizeS
                     }
                 }
-                
-                // Кнопка запуска/остановки демона
-                Rectangle {
-                    id: daemonButton
-                    width: 40
-                    height: 40
-                    radius: 20
-                    color: daemonButtonMouseArea.containsPress ? Color.mSurfaceVariant : 
-                           daemonButtonMouseArea.containsMouse ? Color.mSurfaceVariant : 
-                           "transparent"
-                    
-                    NIcon {
-                        anchors.centerIn: parent
-                        icon: daemonRunning ? "player-stop" : "player-play"
-                        color: daemonRunning ? Color.mError : Color.mPrimary
-                        pointSize: 20
-                        applyUiScale: true
-                    }
-                    
-                    MouseArea {
-                        id: daemonButtonMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        
-                        onClicked: {
-                            if (pluginApi?.mainInstance) {
-                                if (daemonRunning) {
-                                    pluginApi.mainInstance.stopDaemon();
-                                } else {
-                                    pluginApi.mainInstance.startDaemon();
-                                }
-                            }
-                        }
-                    }
-                }
             }
             
             NDivider {
                 Layout.fillWidth: true
             }
             
+            // Основная область
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -268,62 +253,6 @@ Item {
                             color: Color.mError
                             font.pointSize: Style.fontSizeM
                             font.weight: Font.Bold
-                        }
-                        
-                        NText {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.maximumWidth: parent.width * 0.7
-                            text: "Запустите демон для просмотра торрентов"
-                            color: Color.mOnSurfaceVariant
-                            font.pointSize: Style.fontSizeS
-                            wrapMode: Text.WordWrap
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.topMargin: Style.marginL
-                            width: 180
-                            height: 50
-                            radius: 8
-                            color: startButtonMouseArea.containsPress ? Color.mSurfaceVariant : 
-                                   startButtonMouseArea.containsMouse ? Qt.darker(Color.mSurface, 1.1) : 
-                                   Color.mSurfaceVariant
-                            
-                            border.width: 1
-                            border.color: Color.mPrimary
-                            
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: Style.marginS
-                                
-                                NIcon {
-                                    icon: "player-play"
-                                    color: Color.mPrimary
-                                    pointSize: 18
-                                    applyUiScale: true
-                                }
-                                
-                                NText {
-                                    text: "Запустить демон"
-                                    color: Color.mPrimary
-                                    font.pointSize: Style.fontSizeS
-                                    font.weight: Font.Medium
-                                }
-                            }
-                            
-                            MouseArea {
-                                id: startButtonMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                
-                                onClicked: {
-                                    if (pluginApi?.mainInstance) {
-                                        pluginApi.mainInstance.startDaemon();
-                                    }
-                                }
-                            }
                         }
                     }
                 }

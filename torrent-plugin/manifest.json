@@ -1,7 +1,7 @@
 {
     "id": "torrent-plugin",
     "name": "Torrent Plugin",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "author": "Qvarta",
     "description": "Виджет для просмотра и управления torrent-клиентом Transmission",
     "license": "MIT",
@@ -11,7 +11,7 @@
         "panel": "Panel.qml"
     },
     "dependencies": [
-        "transmission-remote",
+        "transmission-cli",
         "transmission-daemon"
     ],
     "metadata": {

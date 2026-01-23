@@ -19,11 +19,9 @@ Item {
 
     BarPill {
         id: pill
-
         screen: root.screen
         oppositeDirection: BarService.getPillDirection(root)
-        icon: "file-download"
-        // text: ""
+        icon: "download"
         autoHide: false
         forceOpen: false
         forceClose: false
