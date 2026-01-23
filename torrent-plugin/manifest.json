@@ -1,0 +1,22 @@
+{
+    "id": "torrent-plugin",
+    "name": "Torrent Plugin",
+    "version": "0.0.2",
+    "author": "Qvarta",
+    "description": "Виджет для просмотра и управления torrent-клиентом Transmission",
+    "license": "MIT",
+    "entryPoints": {
+        "main": "Main.qml",
+        "barWidget": "BarWidget.qml",
+        "panel": "Panel.qml"
+    },
+    "dependencies": [
+        "transmission-remote",
+        "transmission-daemon"
+    ],
+    "metadata": {
+        "refreshInterval": 5000,
+        "serverHost": "localhost",
+        "serverPort": 9091
+    }
+}
