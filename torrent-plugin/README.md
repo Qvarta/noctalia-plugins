@@ -1,4 +1,4 @@
-# Torent plugin for Noctalia Shell
+# Torrent plugin for Noctalia Shell
 
 Widget for monitoring downloads through Noctalia/Quickshell.
 
