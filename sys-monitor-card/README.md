@@ -1,6 +1,11 @@
 # System Monitor для Control Center
-    
-## Установка
+## Установка 
+
+- Добавить SysMonitorCard.qml в папку noctalia-shell/Modules/Cards.
+- Заменить ControlCenterPanel.qml в папке noctalia-shell/Modules/Panels/ControlCenter
+- Заменить ControlCenterTab.qml в папке noctalia-shell/Modules/Panels/Settings/Tabs/ControlCenter
+
+## Установка других карточек
 
 - Добавить ваш виджет в папку Cards (например, SysMonitorCard.qml).
 
@@ -38,7 +43,7 @@
             case "sysmonitor-card": 
                 return sysMonitorHeight
         ...
-        
+
     ```
 
     - Зарегистрировать в ControlCenterTab.qml:
