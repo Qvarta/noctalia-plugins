@@ -5,10 +5,10 @@ Widget for monitoring downloads through Noctalia/Quickshell.
 ## Dependencies
 
 - **transmissions-daemon**
-- **transmissions-remoute**
+- **transmission-cli**
 
 Install with:
-  - ALT: `sudo apt-get install transmissions-daemon transmissions-remoute`
+  - ALT: `sudo apt-get install transmissions-daemon transmission-cli`
 
 
 Connects to localhost:9091 by default.
