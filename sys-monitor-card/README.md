@@ -1,0 +1,55 @@
+# System Monitor для Control Center
+    
+## Установка
+
+- Добавить ваш виджет в папку Cards (например, SysMonitorCard.qml).
+
+- Внести изменения в ControlCenterPanel.qml:
+
+    - Добавить новую константу для высоты вашего виджета
+    ```
+    readonly property int sysMonitorHeight: Math.round(120 * Style.uiScaleRatio)
+
+    ```
+
+    - Добавить новый Component с вашим виджетом
+    ```
+    Component {
+        id: sysMonitorCard
+        SysMonitorCard {}
+    }
+
+    ```
+
+    - Обновить preferredHeight для учета высоты вашего виджета
+    ```
+        ...
+        case "sysmonitor-card": // ← Добавьте этот case
+                height += sysMonitorHeight;
+                break;
+        ...
+
+    ```
+
+    - Добавить новый элемент в Repeater
+
+    ```
+        ...
+            case "sysmonitor-card": 
+                return sysMonitorHeight
+        ...
+        
+    ```
+
+    - Зарегистрировать в ControlCenterTab.qml:
+    ```
+        ...
+            {
+                "id": "sysmonitor-card",
+                "text": "System Monitor",
+                "enabled": true,
+                "required": false
+            }
+        ...
+
+    ```
