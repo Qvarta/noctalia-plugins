@@ -3,7 +3,7 @@
 Widget for monitoring downloads through Noctalia/Quickshell.
 It can add/remove torrents and monitor the download status.
 
-## Dependencies
+## Requirements
 
 - **transmission-daemon**
 - **transmission-cli**
@@ -13,11 +13,6 @@ Install with:
 
 
 Connects to localhost:9091 by default.
-
-## Requirements
-
-    Noctalia/Quickshell 3.6.0+
-    Transmission Daemon with RPC enabled
 
 
 ## Components
