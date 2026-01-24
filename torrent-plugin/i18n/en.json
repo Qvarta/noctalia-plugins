@@ -1,3 +1,26 @@
 {
-  "tooltipLabel": "Torrents"
+  "tooltipLabel": "Torrents",
+  "notActive": "transmission-daemon is not running",
+  "Activate": "transmission-daemon is starting",
+  "stopped": "stopped",
+  "downloading": "Downloading...",
+  "active": "active",
+  "listLoad": "Loading list...",
+  "noTorrents": "No active torrents",
+  "statusDownloading": "Downloading",
+  "statusSeeding": "Seeding",
+  "statusCompleted": "Completed",
+  "statusPause": "Paused",
+  "statusUnknown": "Unknown",
+  "addTorrentTitle": "Add Torrent",
+  "torrentFile": ".torrent file",
+  "magnetLink": "Magnet link",
+  "clear": "Clear",
+  "changeFile": "Change file",
+  "selectFile": "Select .torrent file",
+  "enterMagnetLink": "Enter magnet link",
+  "magnetFormatInfo": "Format: magnet:?xt=urn:btih:HASH&dn=NAME",
+  "cancel": "Cancel",
+  "or": "OR",
+  "add": "Add"
 }

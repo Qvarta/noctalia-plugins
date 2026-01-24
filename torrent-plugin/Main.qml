@@ -182,6 +182,155 @@ Item {
         `, root);
     }
     
+    // Функция добавления торрента из файла
+    function addTorrentFromFile(filePath) {
+        if (!daemonRunning) {
+            errorMessage = "Демон не запущен";
+            return;
+        }
+        
+        Logger.i("Transmission", "Добавление торрента из файла: " + filePath);
+        root.isLoading = true;
+        
+        var addProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                id: fileAddProcess
+                command: ["transmission-remote", "-a", "${filePath}"]
+                running: true
+                
+                stdout: SplitParser {
+                    onRead: data => {
+                        Logger.i("Transmission", "Вывод добавления файла: " + data);
+                    }
+                }
+                
+                stderr: SplitParser {
+                    onRead: data => {
+                        Logger.e("Transmission", "Ошибка добавления файла: " + data);
+                    }
+                }
+                
+                onExited: function(exitCode) {
+                    Logger.i("Transmission", "Добавление файла завершено с кодом: " + exitCode);
+                    root.isLoading = false;
+                    
+                    if (exitCode === 0) {
+                        root.errorMessage = "";
+                        // Обновляем список торрентов после успешного добавления
+                        root.refreshTorrents();
+                    } else {
+                        root.errorMessage = "Ошибка добавления торрента из файла";
+                    }
+                }
+            }
+        `, root);
+    }
+    
+    // Функция добавления торрента по magnet ссылке
+    function addTorrentFromMagnet(magnetLink) {
+        if (!daemonRunning) {
+            errorMessage = "Демон не запущен";
+            return;
+        }
+        
+        Logger.i("Transmission", "Добавление торрента по magnet ссылке: " + magnetLink);
+        root.isLoading = true;
+        
+        var addProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                id: magnetAddProcess
+                command: ["transmission-remote", "-a", "${magnetLink}"]
+                running: true
+                
+                stdout: SplitParser {
+                    onRead: data => {
+                        Logger.i("Transmission", "Вывод добавления magnet: " + data);
+                    }
+                }
+                
+                stderr: SplitParser {
+                    onRead: data => {
+                        Logger.e("Transmission", "Ошибка добавления magnet: " + data);
+                    }
+                }
+                
+                onExited: function(exitCode) {
+                    Logger.i("Transmission", "Добавление magnet завершено с кодом: " + exitCode);
+                    root.isLoading = false;
+                    
+                    if (exitCode === 0) {
+                        root.errorMessage = "";
+                        // Обновляем список торрентов после успешного добавления
+                        root.refreshTorrents();
+                    } else {
+                        root.errorMessage = "Ошибка добавления торрента по magnet ссылке";
+                    }
+                }
+            }
+        `, root);
+    }
+    
+    // Функция удаления торрента по ID
+    function deleteTorrent(torrentId) {
+        if (!daemonRunning) {
+            errorMessage = "Демон не запущен";
+            return;
+        }
+        
+        if (!torrentId) {
+            errorMessage = "ID торрента не указан";
+            return;
+        }
+        
+        Logger.i("Transmission", "Удаление торрента с ID: " + torrentId);
+        root.isLoading = true;
+        
+        var deleteProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                id: deleteProc
+                command: ["transmission-remote", "-t", "${torrentId}", "--remove-and-delete"]
+                running: true
+                
+                stdout: SplitParser {
+                    onRead: data => {
+                        Logger.i("Transmission", "Вывод удаления: " + data);
+                    }
+                }
+                
+                stderr: SplitParser {
+                    onRead: data => {
+                        Logger.e("Transmission", "Ошибка удаления: " + data);
+                    }
+                }
+                
+                onExited: function(exitCode) {
+                    Logger.i("Transmission", "Удаление завершено с кодом: " + exitCode);
+                    root.isLoading = false;
+                    
+                    if (exitCode === 0) {
+                        root.errorMessage = "";
+                        // Обновляем список торрентов после удаления
+                        root.refreshTorrents();
+                    } else {
+                        root.errorMessage = "Ошибка удаления торрента";
+                    }
+                }
+            }
+        `, root);
+    }
+    
     function parseAndUpdateTorrents(output) {
         var lines = output.trim().split('\n');
         var foundTorrents = [];

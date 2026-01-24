@@ -21,7 +21,7 @@ Item {
         id: pill
         screen: root.screen
         oppositeDirection: BarService.getPillDirection(root)
-        icon: "download"
+        icon: "shareplay"
         autoHide: false
         forceOpen: false
         forceClose: false

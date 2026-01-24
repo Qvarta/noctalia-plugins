@@ -1,3 +1,26 @@
 {
-  "tooltipLabel": "Торренты"
+  "tooltipLabel": "Торренты",
+  "notActive": "transmission-daemon не запущен",
+  "Activate" : "transmission-daemon запускается",
+  "stopped": "остановлен",
+  "downloading": "Загрузка...",
+  "active": "активных",
+  "listLoad": "Загрузка списка...",
+  "noTorrents": "Нет активных торрентов",
+  "statusDownloading": "Скачивается",
+  "statusSeeding": "Раздача",
+  "statusCompleted": "Завершен",
+  "statusPause": "Пауза",
+  "statusUnknown": "Неизвестно",
+  "addTorrentTitle": "Добавить торрент",
+  "torrentFile": ".torrent файл",
+  "magnetLink": "Magnet ссылка",
+  "clear": "Очистить",
+  "changeFile": "Изменить файл",
+  "selectFile": "Выберите .torrent файл",
+  "enterMagnetLink": "Введите magnet ссылку",
+  "magnetFormatInfo": "Формат: magnet:?xt=urn:btih:ХЕШ&dn=ИМЯ",
+  "cancel": "Отмена",
+  "or": "ИЛИ",
+  "add": "Добавить"
 }

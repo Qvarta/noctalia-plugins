@@ -10,7 +10,7 @@ Item {
     
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 350 * Style.uiScaleRatio
-    property real contentPreferredHeight: 500 * Style.uiScaleRatio
+    property real contentPreferredHeight: 450 * Style.uiScaleRatio
     readonly property bool allowAttach: true
     
     property ListModel torrentModel: pluginApi?.mainInstance?.torrentModel || null
@@ -18,8 +18,90 @@ Item {
     property string errorMessage: pluginApi?.mainInstance?.errorMessage || ""
     property bool daemonRunning: pluginApi?.mainInstance?.daemonRunning || false
     
+    // Состояние добавления торрента
+    property bool addTorrentMode: false
+    property string magnetLink: ""
+    property string torrentFilePath: ""
+    
     anchors.fill: parent
     
+    // Контекстное меню для торрентов
+    NPopupContextMenu {
+        id: torrentContextMenu
+        itemHeight: 36
+        minWidth: 160
+        
+        property var currentTorrent: null
+        
+        onTriggered: function(action, item) {
+            if (currentTorrent) {
+                if (action === "delete") {
+                    if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
+                        pluginApi.mainInstance.deleteTorrent(currentTorrent.torrentId);
+                    }
+                }
+            }
+            close();
+        }
+        
+        function updateMenuModel() {
+            if (!currentTorrent) return;
+            
+            var newModel = [
+                {
+                    "label": "Удалить торрент",
+                    "action": "delete",
+                    "icon": "trash",
+                    "enabled": true
+                },
+                {
+                    "label": "",
+                    "action": "separator",
+                    "enabled": false,
+                    "visible": false
+                },
+                {
+                    "label": "Отмена",
+                    "action": "cancel",
+                    "icon": "x",
+                    "enabled": true
+                }
+            ];
+            
+            model = newModel;
+        }
+        
+        function openForTorrent(torrent, mouseX, mouseY) {
+            currentTorrent = torrent;
+            updateMenuModel();
+            
+            var anchor = Qt.createQmlObject(`
+                import QtQuick
+                Item {
+                    width: 1
+                    height: 1
+                    x: ${mouseX}
+                    y: ${mouseY}
+                }
+            `, root, "contextMenuAnchor");
+            
+            openAtItem(anchor, null);
+            
+            torrentContextMenu.closed.connect(function() {
+                if (anchor) {
+                    anchor.destroy();
+                }
+                torrentContextMenu.closed.disconnect(arguments.callee);
+            });
+        }
+        
+        function close() {
+            visible = false;
+            currentTorrent = null;
+        }
+    }
+    
+    // Компонент элемента списка торрентов
     component TorrentItem: Rectangle {
         id: torrentRoot
         property int torrentId: 0
@@ -128,17 +210,41 @@ Item {
                     text: {
                         var statusText = "";
                         switch(torrentRoot.torrentStatus) {
-                            case "downloading": statusText = "Скачивается"; break;
-                            case "seeding": statusText = "Раздача"; break;
-                            case "completed": statusText = "Завершен"; break;
-                            case "stopped": statusText = "Пауза"; break;
-                            default: statusText = "Неизвестно";
+                            case "downloading": statusText = pluginApi?.tr("statusDownloading"); break;
+                            case "seeding": statusText = pluginApi?.tr("statusSeeding"); break;
+                            case "completed": statusText = pluginApi?.tr("statusCompleted"); break;
+                            case "stopped": statusText = pluginApi?.tr("statusPause"); break;
+                            default: statusText = pluginApi?.tr("statusUnknown");
                         }
                         return statusText;
                     }
                     color: Color.mOnSurfaceVariant
                     font.pointSize: Style.fontSizeXS
                     font.weight: Font.Medium
+                }
+            }
+        }
+        
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.RightButton) {
+                    var torrentDelegatePos = torrentRoot.mapToItem(root, 0, 0);
+                    var clickX = mouse.x + torrentDelegatePos.x;
+                    var clickY = mouse.y + torrentDelegatePos.y;
+                    
+                    var torrentData = {
+                        "torrentId": torrentRoot.torrentId,
+                        "torrentName": torrentRoot.torrentName,
+                        "torrentPercent": torrentRoot.torrentPercent,
+                        "torrentStatus": torrentRoot.torrentStatus
+                    };
+                    
+                    torrentContextMenu.openForTorrent(torrentData, clickX, clickY);
                 }
             }
         }
@@ -157,25 +263,41 @@ Item {
             }
             spacing: Style.marginM
             
-            // ЗАГОЛОВОК ПАНЕЛИ - только кнопка управления слева
+            // Заголовок панели
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Style.marginM
                 
-                // Кнопка запуска/остановки демона - теперь слева вместо иконки
+                // Кнопка запуска/остановки демона
                 Rectangle {
                     id: daemonButton
                     width: 48
                     height: 48
                     radius: 8
-                    color: Color.mSurfaceVariant
+                    color: daemonButtonMouseArea.containsMouse ? 
+                        (daemonRunning ? Qt.darker(Color.mError, 1.2) : Qt.darker(Color.mHover, 1.2)) : 
+                        Color.mSurfaceVariant
+                    
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Style.animationFast
+                        }
+                    }
                     
                     NIcon {
                         anchors.centerIn: parent
                         icon: daemonRunning ? "player-stop" : "player-play"
-                        color: daemonRunning ? Color.mError : Color.mHover
+                        color: daemonButtonMouseArea.containsMouse ? 
+                            Color.mOnHover : 
+                            (daemonRunning ? Color.mError : Color.mHover)
                         pointSize: 24
                         applyUiScale: true
+                        
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: Style.animationFast
+                            }
+                        }
                     }
                     
                     MouseArea {
@@ -201,7 +323,7 @@ Item {
                     Layout.fillWidth: true
                     
                     NText {
-                        text: "Торренты"
+                        text: pluginApi?.tr("tooltipLabel")
                         color: Color.mOnSurface
                         font.pointSize: Style.fontSizeL
                         font.weight: Font.Bold
@@ -209,13 +331,58 @@ Item {
                     
                     NText {
                         text: {
-                            if (!daemonRunning) return "Демон не запущен";
-                            if (!torrentModel) return "Загрузка...";
+                            if (!daemonRunning) return pluginApi?.tr("stopped");
+                            if (!torrentModel) return pluginApi?.tr("downloading");
                             if (errorMessage) return errorMessage;
-                            return torrentModel.count + " активных";
+                            return torrentModel.count + " " + pluginApi?.tr("active");
                         }
                         color: errorMessage || !daemonRunning ? Color.mError : Color.mOnSurfaceVariant
                         font.pointSize: Style.fontSizeS
+                    }
+                }
+                
+                Item {
+                    Layout.fillWidth: true
+                }
+                
+                // Кнопка добавления торрента
+                Rectangle {
+                    id: addButton
+                    width: 48
+                    height: 48
+                    radius: 8
+                    color: addButtonMouseArea.containsMouse ? Color.mHover : Color.mSurfaceVariant
+                    visible: daemonRunning && !root.addTorrentMode
+                    
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Style.animationFast
+                        }
+                    }
+                    
+                    NIcon {
+                        anchors.centerIn: parent
+                        icon: "plus"
+                        color: addButtonMouseArea.containsMouse ? Color.mOnHover : Color.mOnSurfaceVariant
+                        pointSize: 24
+                        applyUiScale: true
+                        
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: Style.animationFast
+                            }
+                        }
+                    }
+                    
+                    MouseArea {
+                        id: addButtonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        
+                        onClicked: {
+                            root.addTorrentMode = true;
+                        }
                     }
                 }
             }
@@ -225,106 +392,311 @@ Item {
             }
             
             // Основная область
-            Rectangle {
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: "transparent"
                 
-                // Состояние: демон не запущен
-                Loader {
+                StackLayout {
+                    id: mainStack
                     anchors.fill: parent
-                    active: !daemonRunning && !isLoading
+                    currentIndex: root.addTorrentMode ? 1 : 0
                     
-                    sourceComponent: ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: Style.marginM
+                    // Вкладка 1: Список торрентов
+                    Item {
+                        id: torrentsTab
                         
-                        NIcon {
-                            Layout.alignment: Qt.AlignHCenter
-                            icon: "power"
-                            color: Color.mError
-                            pointSize: 64
-                            applyUiScale: true
+                        // Состояние: демон не запущен
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: Style.marginM
+                            visible: !daemonRunning && !isLoading
+                            
+                            NIcon {
+                                Layout.alignment: Qt.AlignHCenter
+                                icon: "power"
+                                color: Color.mError
+                                pointSize: 64
+                                applyUiScale: true
+                            }
+                            
+                            NText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: pluginApi?.tr("notActive")
+                                color: Color.mError
+                                font.pointSize: Style.fontSizeM
+                                font.weight: Font.Bold
+                            }
                         }
                         
-                        NText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Демон Transmission не запущен"
-                            color: Color.mError
-                            font.pointSize: Style.fontSizeM
-                            font.weight: Font.Bold
-                        }
-                    }
-                }
-                
-                // Состояние загрузки
-                Loader {
-                    anchors.fill: parent
-                    active: isLoading && (!torrentModel || torrentModel.count === 0)
-                    
-                    sourceComponent: ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: Style.marginL
-                        
-                        NIcon {
-                            Layout.alignment: Qt.AlignHCenter
-                            icon: "download"
-                            color: Color.mPrimary
-                            pointSize: 48
-                            applyUiScale: true
+                        // Состояние: загрузка
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: Style.marginL
+                            visible: isLoading && (!torrentModel || torrentModel.count === 0)
+                            
+                            NIcon {
+                                Layout.alignment: Qt.AlignHCenter
+                                icon: "download"
+                                color: Color.mPrimary
+                                pointSize: 48
+                                applyUiScale: true
+                            }
+                            
+                            NText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: pluginApi?.tr("Activate")
+                                color: Color.mOnSurfaceVariant
+                                font.pointSize: Style.fontSizeM
+                            }
                         }
                         
-                        NText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Загрузка списка..."
-                            color: Color.mOnSurfaceVariant
-                            font.pointSize: Style.fontSizeM
-                        }
-                    }
-                }
-                
-                // Список торрентов (когда демон работает)
-                ScrollView {
-                    anchors.fill: parent
-                    visible: daemonRunning && torrentModel && torrentModel.count > 0
-                    
-                    ListView {
-                        id: torrentListView
-                        anchors.fill: parent
-                        model: torrentModel
-                        spacing: Style.marginS
-                        clip: true
-                        
-                        delegate: TorrentItem {
-                            width: torrentListView.width
-                            torrentId: model.id
-                            torrentName: model.name
-                            torrentPercent: model.percent
-                            torrentStatus: model.status
+                        // Состояние: пустой список торрентов
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: Style.marginM
+                            visible: daemonRunning && torrentModel && torrentModel.count === 0 && !isLoading
+                            
+                            NIcon {
+                                Layout.alignment: Qt.AlignHCenter
+                                icon: "download-off"
+                                color: Color.mOnSurfaceVariant
+                                pointSize: 48
+                                applyUiScale: true
+                            }
+                            
+                            NText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: pluginApi?.tr("noTorrents")
+                                color: Color.mOnSurfaceVariant
+                                font.pointSize: Style.fontSizeM
+                            }
                         }
                         
-                        Rectangle {
+                        // Список торрентов с прокруткой
+                        NListView {
                             anchors.fill: parent
-                            color: "transparent"
-                            visible: torrentModel && torrentModel.count === 0 && !isLoading
+                            visible: daemonRunning && torrentModel && torrentModel.count > 0
+                            model: torrentModel
+                            spacing: Style.marginS
+                            
+                            delegate: TorrentItem {
+                                width: ListView.view.width
+                                torrentId: model.id
+                                torrentName: model.name
+                                torrentPercent: model.percent
+                                torrentStatus: model.status
+                            }
+                        }
+                    }
+                    
+                    // Вкладка 2: Добавление нового торрента
+                    Item {
+                        id: addTorrentTab
+                        
+                        ScrollView {
+                            anchors.fill: parent
+                            clip: true
                             
                             ColumnLayout {
-                                anchors.centerIn: parent
+                                width: addTorrentTab.width
                                 spacing: Style.marginM
                                 
-                                NIcon {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    icon: "download-off"
-                                    color: Color.mOnSurfaceVariant
-                                    pointSize: 48
-                                    applyUiScale: true
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 40
+                                    
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: Style.marginS
+                                        
+                                        NIcon {
+                                            icon: "download"
+                                            color: Color.mPrimary
+                                            pointSize: Style.fontSizeL
+                                        }
+                                        
+                                        NText {
+                                            text: pluginApi?.tr("addTorrentTitle") || "Добавить торрент"
+                                            color: Color.mOnSurface
+                                            font.pointSize: Style.fontSizeL
+                                            font.weight: Font.Bold
+                                        }
+                                    }
+                                }
+                                
+                                NDivider {
+                                    Layout.fillWidth: true
                                 }
                                 
                                 NText {
-                                    Layout.alignment: Qt.AlignHCenter
-                                    text: "Нет активных торрентов"
+                                    text: pluginApi?.tr("enterMagnetLink") || "Magnet ссылка:"
                                     color: Color.mOnSurfaceVariant
-                                    font.pointSize: Style.fontSizeM
+                                    font.pointSize: Style.fontSizeS
+                                    Layout.topMargin: Style.marginS
+                                }
+                                
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 80
+                                    radius: Style.radiusS
+                                    color: Color.mSurfaceVariant
+                                    border.width: Style.borderS
+                                    border.color: root.magnetLink ? Color.mSecondary : Color.mOutline
+                                    
+                                    TextArea {
+                                        id: magnetInput
+                                        anchors {
+                                            fill: parent
+                                            margins: Style.marginS
+                                        }
+                                        text: root.magnetLink
+                                        color: Color.mOnSurface
+                                        font.pointSize: Style.fontSizeS
+                                        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                                        selectByMouse: true
+                                        background: null
+                                        
+                                        onTextChanged: {
+                                            root.magnetLink = text;
+                                        }
+                                    }
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Style.marginM
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        color: Color.mOutline
+                                    }
+                                    
+                                    NText {
+                                        text: pluginApi?.tr("or") || "ИЛИ"
+                                        color: Color.mOnSurfaceVariant
+                                        font.pointSize: Style.fontSizeXS
+                                        font.weight: Font.Medium
+                                    }
+                                    
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        color: Color.mOutline
+                                    }
+                                }
+                                
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 60
+                                    radius: Style.radiusM
+                                    color: root.torrentFilePath ? Color.mSurface : Color.mSurfaceVariant
+                                    border.width: Style.borderS
+                                    border.color: root.torrentFilePath ? Color.mSecondary : Color.mOutline
+                                    visible: root.torrentFilePath
+                                    
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: Style.marginM
+                                        spacing: Style.marginM
+                                        
+                                        NIcon {
+                                            icon: "check"
+                                            color: Color.mSecondary
+                                            pointSize: 20
+                                            applyUiScale: true
+                                        }
+                                        
+                                        NText {
+                                            text: root.torrentFilePath.split('/').pop()
+                                            color: Color.mOnSurfaceVariant
+                                            font.pointSize: Style.fontSizeS
+                                            elide: Text.ElideMiddle
+                                            Layout.fillWidth: true
+                                        }
+                                        
+                                        NIconButton {
+                                            icon: "x"
+                                            tooltipText: pluginApi?.tr("clear") || "Очистить"
+                                            onClicked: {
+                                                root.torrentFilePath = "";
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                NButton {
+                                    Layout.fillWidth: true
+                                    text: root.torrentFilePath ? 
+                                          (pluginApi?.tr("changeFile") || "Изменить файл") : 
+                                          (pluginApi?.tr("selectFile") || "Выбрать .torrent файл")
+                                    icon: "folder"
+                                    onClicked: {
+                                        torrentFilePicker.openFilePicker();
+                                    }
+                                }
+                                
+                                NFilePicker {
+                                    id: torrentFilePicker
+                                    title: pluginApi?.tr("selectTorrentFile") || "Выберите .torrent файл"
+                                    selectionMode: "files"
+                                    nameFilters: ["*.torrent"]
+                                    showHiddenFiles: false
+                                    
+                                    onAccepted: function(paths) {
+                                        if (paths.length > 0) {
+                                            root.torrentFilePath = paths[0];
+                                        }
+                                    }
+                                    
+                                    onCancelled: {
+                                    }
+                                }
+                                
+                                Item {
+                                    Layout.fillHeight: true
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Style.marginM
+                                    Layout.topMargin: Style.marginL
+                                    
+                                    NButton {
+                                        Layout.fillWidth: true
+                                        text: pluginApi?.tr("cancel") || "Отмена"
+                                        outlined: true
+                                        onClicked: {
+                                            root.addTorrentMode = false;
+                                            root.magnetLink = "";
+                                            root.torrentFilePath = "";
+                                        }
+                                    }
+                                    
+                                    NButton {
+                                        Layout.fillWidth: true
+                                        text: pluginApi?.tr("addTorrentTitle") || "Добавить"
+                                        icon: "plus"
+                                        enabled: root.magnetLink || root.torrentFilePath
+                                        onClicked: {
+                                            if (root.torrentFilePath) {
+                                                // Вызов функции добавления через файл
+                                                if (pluginApi?.mainInstance && root.torrentFilePath) {
+                                                    pluginApi.mainInstance.addTorrentFromFile(root.torrentFilePath);
+                                                }
+                                            } else if (root.magnetLink) {
+                                                // Вызов функции добавления через magnet
+                                                if (pluginApi?.mainInstance && root.magnetLink) {
+                                                    pluginApi.mainInstance.addTorrentFromMagnet(root.magnetLink);
+                                                }
+                                            }
+                                            
+                                            // Сбрасываем состояние
+                                            root.addTorrentMode = false;
+                                            root.magnetLink = "";
+                                            root.torrentFilePath = "";
+                                        }
+                                    }
                                 }
                             }
                         }
