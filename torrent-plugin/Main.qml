@@ -27,7 +27,6 @@ Item {
         }
     }
     
-    // Таймер для задержки проверки после запуска демона
     Timer {
         id: checkAfterStartTimer
         interval: 2000
@@ -71,9 +70,7 @@ Item {
         }
     }
     
-    // Функция запуска демона
     function startDaemon() {
-        Logger.i("Transmission", "Запуск transmission-daemon");
         root.isLoading = true;
         root.errorMessage = "";
         
@@ -86,19 +83,15 @@ Item {
                 command: ["transmission-daemon", "--foreground"]
                 running: true
                 onExited: function(exitCode) {
-                    Logger.i("Transmission", "Демон завершился с кодом: " + exitCode);
                     root.isLoading = false;
                 }
             }
         `, root);
         
-        // Запускаем таймер для проверки через 2 секунды
         checkAfterStartTimer.start();
     }
     
-    // Функция остановки демона
     function stopDaemon() {
-        Logger.i("Transmission", "Остановка transmission-daemon");
         root.isLoading = true;
         
         var stopProcess = Qt.createQmlObject(`
@@ -113,15 +106,12 @@ Item {
                 
                 onExited: function(exitCode) {
                     if (exitCode === 0) {
-                        Logger.i("Transmission", "Демон остановлен через --exit");
                         root.daemonRunning = false;
                         root.torrentModel.clear();
                         root.errorMessage = "Демон остановлен";
                         refreshTimer.stop();
                         root.isLoading = false;
                     } else {
-                        Logger.i("Transmission", "Не удалось остановить демон, пробуем kill");
-                        // Запускаем процесс kill
                         var killProcess = Qt.createQmlObject('
                             import QtQuick
                             import Quickshell
@@ -130,7 +120,6 @@ Item {
                                 command: ["pkill", "-f", "transmission-daemon"]
                                 running: true
                                 onExited: function(killExitCode) {
-                                    Logger.i("Transmission", "Демон убит через pkill: " + killExitCode);
                                     root.daemonRunning = false;
                                     root.torrentModel.clear();
                                     root.errorMessage = "Демон остановлен";
@@ -145,12 +134,10 @@ Item {
         `, root);
     }
     
-    // Проверка статуса демона
     function checkDaemonStatus() {
         if (root.checkingDaemon) return;
         
         root.checkingDaemon = true;
-        Logger.i("Transmission", "Проверка статуса демона через подключение");
         
         var checkProcess = Qt.createQmlObject(`
             import QtQuick
@@ -164,7 +151,6 @@ Item {
                 onExited: function(exitCode) {
                     root.checkingDaemon = false;
                     if (exitCode === 0) {
-                        Logger.i("Transmission", "Демон активен и отвечает");
                         root.daemonRunning = true;
                         root.errorMessage = "";
                         if (!refreshTimer.running) {
@@ -172,7 +158,6 @@ Item {
                             root.refreshTorrents();
                         }
                     } else {
-                        Logger.i("Transmission", "Демон не отвечает");
                         root.daemonRunning = false;
                         root.errorMessage = "Демон не запущен";
                         refreshTimer.stop();
@@ -182,14 +167,98 @@ Item {
         `, root);
     }
     
-    // Функция добавления торрента из файла
+    function pauseTorrent(torrentId) {
+        if (!daemonRunning) {
+            errorMessage = "Демон не запущен";
+            return;
+        }
+        
+        if (!torrentId) {
+            errorMessage = "ID торрента не указан";
+            return;
+        }
+        
+        root.isLoading = true;
+        
+        var pauseProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                id: pauseProc
+                command: ["transmission-remote", "-t", "${torrentId}", "--stop"]
+                running: true
+                
+                stderr: SplitParser {
+                    onRead: data => {
+                        Logger.e("Transmission", "Ошибка остановки: " + data);
+                    }
+                }
+                
+                onExited: function(exitCode) {
+                    root.isLoading = false;
+                    
+                    if (exitCode === 0) {
+                        root.errorMessage = "";
+                        root.refreshTorrents();
+                    } else {
+                        root.errorMessage = "Ошибка остановки торрента";
+                    }
+                }
+            }
+        `, root);
+    }
+    
+    function resumeTorrent(torrentId) {
+        if (!daemonRunning) {
+            errorMessage = "Демон не запущен";
+            return;
+        }
+        
+        if (!torrentId) {
+            errorMessage = "ID торрента не указан";
+            return;
+        }
+        
+        root.isLoading = true;
+        
+        var resumeProcess = Qt.createQmlObject(`
+            import QtQuick
+            import Quickshell
+            import Quickshell.Io
+            import qs.Commons
+            Process {
+                id: resumeProc
+                command: ["transmission-remote", "-t", "${torrentId}", "--start"]
+                running: true
+                
+                stderr: SplitParser {
+                    onRead: data => {
+                        Logger.e("Transmission", "Ошибка запуска: " + data);
+                    }
+                }
+                
+                onExited: function(exitCode) {
+                    root.isLoading = false;
+                    
+                    if (exitCode === 0) {
+                        root.errorMessage = "";
+                        root.refreshTorrents();
+                    } else {
+                        root.errorMessage = "Ошибка возобновления торрента";
+                    }
+                }
+            }
+        `, root);
+    }
+    
     function addTorrentFromFile(filePath) {
         if (!daemonRunning) {
             errorMessage = "Демон не запущен";
             return;
         }
         
-        Logger.i("Transmission", "Добавление торрента из файла: " + filePath);
         root.isLoading = true;
         
         var addProcess = Qt.createQmlObject(`
@@ -202,12 +271,6 @@ Item {
                 command: ["transmission-remote", "-a", "${filePath}"]
                 running: true
                 
-                stdout: SplitParser {
-                    onRead: data => {
-                        Logger.i("Transmission", "Вывод добавления файла: " + data);
-                    }
-                }
-                
                 stderr: SplitParser {
                     onRead: data => {
                         Logger.e("Transmission", "Ошибка добавления файла: " + data);
@@ -215,12 +278,10 @@ Item {
                 }
                 
                 onExited: function(exitCode) {
-                    Logger.i("Transmission", "Добавление файла завершено с кодом: " + exitCode);
                     root.isLoading = false;
                     
                     if (exitCode === 0) {
                         root.errorMessage = "";
-                        // Обновляем список торрентов после успешного добавления
                         root.refreshTorrents();
                     } else {
                         root.errorMessage = "Ошибка добавления торрента из файла";
@@ -230,14 +291,12 @@ Item {
         `, root);
     }
     
-    // Функция добавления торрента по magnet ссылке
     function addTorrentFromMagnet(magnetLink) {
         if (!daemonRunning) {
             errorMessage = "Демон не запущен";
             return;
         }
         
-        Logger.i("Transmission", "Добавление торрента по magnet ссылке: " + magnetLink);
         root.isLoading = true;
         
         var addProcess = Qt.createQmlObject(`
@@ -250,12 +309,6 @@ Item {
                 command: ["transmission-remote", "-a", "${magnetLink}"]
                 running: true
                 
-                stdout: SplitParser {
-                    onRead: data => {
-                        Logger.i("Transmission", "Вывод добавления magnet: " + data);
-                    }
-                }
-                
                 stderr: SplitParser {
                     onRead: data => {
                         Logger.e("Transmission", "Ошибка добавления magnet: " + data);
@@ -263,12 +316,10 @@ Item {
                 }
                 
                 onExited: function(exitCode) {
-                    Logger.i("Transmission", "Добавление magnet завершено с кодом: " + exitCode);
                     root.isLoading = false;
                     
                     if (exitCode === 0) {
                         root.errorMessage = "";
-                        // Обновляем список торрентов после успешного добавления
                         root.refreshTorrents();
                     } else {
                         root.errorMessage = "Ошибка добавления торрента по magnet ссылке";
@@ -278,7 +329,6 @@ Item {
         `, root);
     }
     
-    // Функция удаления торрента по ID
     function deleteTorrent(torrentId) {
         if (!daemonRunning) {
             errorMessage = "Демон не запущен";
@@ -290,7 +340,6 @@ Item {
             return;
         }
         
-        Logger.i("Transmission", "Удаление торрента с ID: " + torrentId);
         root.isLoading = true;
         
         var deleteProcess = Qt.createQmlObject(`
@@ -303,12 +352,6 @@ Item {
                 command: ["transmission-remote", "-t", "${torrentId}", "--remove-and-delete"]
                 running: true
                 
-                stdout: SplitParser {
-                    onRead: data => {
-                        Logger.i("Transmission", "Вывод удаления: " + data);
-                    }
-                }
-                
                 stderr: SplitParser {
                     onRead: data => {
                         Logger.e("Transmission", "Ошибка удаления: " + data);
@@ -316,12 +359,10 @@ Item {
                 }
                 
                 onExited: function(exitCode) {
-                    Logger.i("Transmission", "Удаление завершено с кодом: " + exitCode);
                     root.isLoading = false;
                     
                     if (exitCode === 0) {
                         root.errorMessage = "";
-                        // Обновляем список торрентов после удаления
                         root.refreshTorrents();
                     } else {
                         root.errorMessage = "Ошибка удаления торрента";
@@ -381,6 +422,9 @@ Item {
             for (var i = 4; i < parts.length; i++) {
                 if (isStatusWord(parts[i])) {
                     status = parseStatus(parts[i]);
+                    if (percent === 100 && status === "idle") {
+                        status = "completed";
+                    }
                     break;
                 }
             }
@@ -406,26 +450,18 @@ Item {
     }
     
     function isStatusWord(word) {
-        var statusWords = ["Idle", "Seeding", "Downloading", "Stopped", "Verifying", "Queued"];
+        var statusWords = ["Idle", "Seeding", "Downloading", "Stopped", "Verifying", "Queued", "Finished", "Paused", "Up", "Down"];
         return statusWords.includes(word);
     }
     
     function parseStatus(statusStr) {
-        if (statusStr === "Stopped") return "stopped";
-        if (statusStr === "Idle") return "completed";
-        if (statusStr === "Downloading") return "downloading";
-        if (statusStr === "Seeding") return "seeding";
+        if (statusStr === "Stopped" || statusStr === "Paused") return "stopped";
+        if (statusStr === "Idle" || statusStr === "Finished") return "idle";
+        if (statusStr === "Downloading" || statusStr === "Down") return "downloading";
+        if (statusStr === "Seeding" || statusStr === "Up") return "seeding";
+        if (statusStr === "Verifying") return "verifying";
+        if (statusStr === "Queued") return "queued";
         return "unknown";
-    }
-    
-    function getStatusText(status) {
-        switch(status) {
-            case "downloading": return "Скачивается";
-            case "seeding": return "Раздача";
-            case "completed": return "Завершен";
-            case "stopped": return "Пауза";
-            default: return "Неизвестно";
-        }
     }
     
     function smoothUpdateModel(newTorrents) {

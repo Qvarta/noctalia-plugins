@@ -18,14 +18,12 @@ Item {
     property string errorMessage: pluginApi?.mainInstance?.errorMessage || ""
     property bool daemonRunning: pluginApi?.mainInstance?.daemonRunning || false
     
-    // Состояние добавления торрента
     property bool addTorrentMode: false
     property string magnetLink: ""
     property string torrentFilePath: ""
     
     anchors.fill: parent
     
-    // Контекстное меню для торрентов
     NPopupContextMenu {
         id: torrentContextMenu
         itemHeight: 36
@@ -35,7 +33,15 @@ Item {
         
         onTriggered: function(action, item) {
             if (currentTorrent) {
-                if (action === "delete") {
+                if (action === "pause") {
+                    if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
+                        pluginApi.mainInstance.pauseTorrent(currentTorrent.torrentId);
+                    }
+                } else if (action === "resume") {
+                    if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
+                        pluginApi.mainInstance.resumeTorrent(currentTorrent.torrentId);
+                    }
+                } else if (action === "delete") {
                     if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
                         pluginApi.mainInstance.deleteTorrent(currentTorrent.torrentId);
                     }
@@ -47,26 +53,46 @@ Item {
         function updateMenuModel() {
             if (!currentTorrent) return;
             
-            var newModel = [
-                {
-                    "label": "Удалить торрент",
-                    "action": "delete",
-                    "icon": "trash",
+            var isStopped = currentTorrent.torrentStatus === "stopped";
+            
+            var newModel = [];
+            
+            if (!isStopped) {
+                newModel.push({
+                    "label": pluginApi?.tr("statusPause"),
+                    "action": "pause",
+                    "icon": "player-pause",
                     "enabled": true
-                },
-                {
-                    "label": "",
-                    "action": "separator",
-                    "enabled": false,
-                    "visible": false
-                },
-                {
-                    "label": "Отмена",
-                    "action": "cancel",
-                    "icon": "x",
+                });
+            } else {
+                newModel.push({
+                    "label": pluginApi?.tr("continue"),
+                    "action": "resume",
+                    "icon": "player-play",
                     "enabled": true
-                }
-            ];
+                });
+            }
+            
+            newModel.push({
+                "label": pluginApi?.tr("removeTorrentTitle"),
+                "action": "delete",
+                "icon": "trash",
+                "enabled": true
+            });
+            
+            newModel.push({
+                "label": "",
+                "action": "separator",
+                "enabled": false,
+                "visible": false
+            });
+            
+            newModel.push({
+                "label": pluginApi?.tr("cancel"),
+                "action": "cancel",
+                "icon": "x",
+                "enabled": true
+            });
             
             model = newModel;
         }
@@ -101,7 +127,6 @@ Item {
         }
     }
     
-    // Компонент элемента списка торрентов
     component TorrentItem: Rectangle {
         id: torrentRoot
         property int torrentId: 0
@@ -126,6 +151,9 @@ Item {
                     case "seeding": return Color.mSecondary;
                     case "completed": return Color.mTertiary;
                     case "stopped": return Color.mError;
+                    case "verifying": return Color.mWarning;
+                    case "queued": return Color.mInfo;
+                    case "idle": return Color.mOutline;
                     default: return Color.mOutline;
                 }
             }
@@ -191,6 +219,9 @@ Item {
                         if (torrentRoot.torrentStatus === "stopped") return "player-pause";
                         if (torrentRoot.torrentStatus === "completed") return "check";
                         if (torrentRoot.torrentStatus === "seeding") return "upload";
+                        if (torrentRoot.torrentStatus === "verifying") return "shield-check";
+                        if (torrentRoot.torrentStatus === "queued") return "clock";
+                        if (torrentRoot.torrentStatus === "idle") return "clock";
                         return "help-circle";
                     }
                     color: parent.parent.parent.children[0].color
@@ -214,6 +245,9 @@ Item {
                             case "seeding": statusText = pluginApi?.tr("statusSeeding"); break;
                             case "completed": statusText = pluginApi?.tr("statusCompleted"); break;
                             case "stopped": statusText = pluginApi?.tr("statusPause"); break;
+                            case "verifying": statusText = pluginApi?.tr("statusVerifying"); break;
+                            case "queued": statusText = pluginApi?.tr("statusQueued"); break;
+                            case "idle": statusText = pluginApi?.tr("statusIdle"); break;
                             default: statusText = pluginApi?.tr("statusUnknown");
                         }
                         return statusText;
@@ -263,12 +297,10 @@ Item {
             }
             spacing: Style.marginM
             
-            // Заголовок панели
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Style.marginM
                 
-                // Кнопка запуска/остановки демона
                 Rectangle {
                     id: daemonButton
                     width: 48
@@ -345,7 +377,6 @@ Item {
                     Layout.fillWidth: true
                 }
                 
-                // Кнопка добавления торрента
                 Rectangle {
                     id: addButton
                     width: 48
@@ -391,7 +422,6 @@ Item {
                 Layout.fillWidth: true
             }
             
-            // Основная область
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -401,11 +431,9 @@ Item {
                     anchors.fill: parent
                     currentIndex: root.addTorrentMode ? 1 : 0
                     
-                    // Вкладка 1: Список торрентов
                     Item {
                         id: torrentsTab
                         
-                        // Состояние: демон не запущен
                         ColumnLayout {
                             anchors.centerIn: parent
                             spacing: Style.marginM
@@ -428,7 +456,6 @@ Item {
                             }
                         }
                         
-                        // Состояние: загрузка
                         ColumnLayout {
                             anchors.centerIn: parent
                             spacing: Style.marginL
@@ -450,7 +477,6 @@ Item {
                             }
                         }
                         
-                        // Состояние: пустой список торрентов
                         ColumnLayout {
                             anchors.centerIn: parent
                             spacing: Style.marginM
@@ -472,7 +498,6 @@ Item {
                             }
                         }
                         
-                        // Список торрентов с прокруткой
                         NListView {
                             anchors.fill: parent
                             visible: daemonRunning && torrentModel && torrentModel.count > 0
@@ -489,7 +514,6 @@ Item {
                         }
                     }
                     
-                    // Вкладка 2: Добавление нового торрента
                     Item {
                         id: addTorrentTab
                         
@@ -680,18 +704,15 @@ Item {
                                         enabled: root.magnetLink || root.torrentFilePath
                                         onClicked: {
                                             if (root.torrentFilePath) {
-                                                // Вызов функции добавления через файл
                                                 if (pluginApi?.mainInstance && root.torrentFilePath) {
                                                     pluginApi.mainInstance.addTorrentFromFile(root.torrentFilePath);
                                                 }
                                             } else if (root.magnetLink) {
-                                                // Вызов функции добавления через magnet
                                                 if (pluginApi?.mainInstance && root.magnetLink) {
                                                     pluginApi.mainInstance.addTorrentFromMagnet(root.magnetLink);
                                                 }
                                             }
                                             
-                                            // Сбрасываем состояние
                                             root.addTorrentMode = false;
                                             root.magnetLink = "";
                                             root.torrentFilePath = "";
