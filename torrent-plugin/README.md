@@ -1,7 +1,6 @@
 # Torrent plugin for Noctalia Shell( in development)
 
-Widget for monitoring downloads through Noctalia/Quickshell.
-It can add/remove torrents and monitor the download status.
+A widget for monitoring and managing torrent downloads via Noctalia/Quickshell.
 
 ## Requirements
 
