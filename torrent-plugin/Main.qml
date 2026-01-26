@@ -549,7 +549,7 @@ Item {
     }
     
     IpcHandler {
-        target: "plugin:transmission-widget"
+        target: "plugin:torrent-widget"
         
         function toggle() {
             if (pluginApi) {

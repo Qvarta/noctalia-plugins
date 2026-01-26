@@ -22,7 +22,6 @@
   "changeFile": "Change file",
   "selectFile": ".torrent file",
   "enterMagnetLink": "Enter magnet link",
-  "magnetFormatInfo": "Format: magnet:?xt=urn:btih:HASH&dn=NAME",
   "cancel": "Cancel",
   "or": "OR",
   "add": "Add"

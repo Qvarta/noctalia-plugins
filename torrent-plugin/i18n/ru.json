@@ -22,7 +22,6 @@
   "changeFile": "Изменить файл",
   "selectFile": ".torrent файл",
   "enterMagnetLink": "Введите magnet ссылку",
-  "magnetFormatInfo": "Формат: magnet:?xt=urn:btih:ХЕШ&dn=ИМЯ",
   "cancel": "Отмена",
   "or": "ИЛИ",
   "add": "Добавить"
