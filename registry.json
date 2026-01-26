@@ -59,7 +59,7 @@
     {
       "id": "torrent-plugin",
       "name": "Torrent Plugin",
-      "version": "0.1.1",
+      "version": "0.1.3",
       "author": "Qvarta",
       "description": "Widget for viewing and managing torrent downloads",
       "license": "MIT",

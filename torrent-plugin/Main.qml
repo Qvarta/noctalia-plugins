@@ -31,15 +31,28 @@ Item {
         id: checkAfterStartTimer
         interval: 2000
         running: false
-        repeat: false
+        repeat: true
+        property int attempts: 0
+        property int maxAttempts: 10
+        
         onTriggered: {
+            attempts++;
             root.checkDaemonStatus();
+            
+            if (root.daemonRunning || attempts >= maxAttempts) {
+                stop();
+                attempts = 0;
+                if (!root.daemonRunning) {
+                    root.errorMessage = "Не удалось запустить демон";
+                    root.isLoading = false;
+                }
+            }
         }
     }
     
     Process {
         id: transmissionProcess
-        command: ["transmission-remote", "-l"]
+        command: ["transmission-remote", "-j", "-l"]
         running: false
         
         stdout: SplitParser {
@@ -54,7 +67,7 @@ Item {
         
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0 && root.processOutput.length > 0) {
-                var fullOutput = root.processOutput.join("\n");
+                var fullOutput = root.processOutput.join("");
                 parseAndUpdateTorrents(fullOutput);
                 root.daemonRunning = true;
                 root.errorMessage = "";
@@ -73,6 +86,7 @@ Item {
     function startDaemon() {
         root.isLoading = true;
         root.errorMessage = "";
+        root.daemonRunning = false;
         
         var startProcess = Qt.createQmlObject(`
             import QtQuick
@@ -80,19 +94,27 @@ Item {
             import Quickshell.Io
             import qs.Commons
             Process {
-                command: ["transmission-daemon", "--foreground"]
+                id: daemonProc
+                command: ["transmission-daemon"]
                 running: true
+                
                 onExited: function(exitCode) {
-                    root.isLoading = false;
+                    if (exitCode !== 0) {
+                        root.isLoading = false;
+                        root.errorMessage = "Ошибка запуска демона";
+                    }
                 }
             }
         `, root);
         
+        // Даем демону время запуститься
+        checkAfterStartTimer.attempts = 0;
         checkAfterStartTimer.start();
     }
     
     function stopDaemon() {
         root.isLoading = true;
+        root.errorMessage = "";
         
         var stopProcess = Qt.createQmlObject(`
             import QtQuick
@@ -105,21 +127,40 @@ Item {
                 running: true
                 
                 onExited: function(exitCode) {
-                    if (exitCode === 0) {
-                        root.daemonRunning = false;
-                        root.torrentModel.clear();
-                        root.errorMessage = "Демон остановлен";
-                        refreshTimer.stop();
-                        root.isLoading = false;
-                    } else {
-                        var killProcess = Qt.createQmlObject('
-                            import QtQuick
-                            import Quickshell
-                            import Quickshell.Io
-                            Process {
-                                command: ["pkill", "-f", "transmission-daemon"]
-                                running: true
-                                onExited: function(killExitCode) {
+                    var checkProcess = Qt.createQmlObject('
+                        import QtQuick
+                        import Quickshell
+                        import Quickshell.Io
+                        import qs.Commons
+                        Process {
+                            id: checkProc
+                            command: ["pgrep", "-f", "transmission-daemon"]
+                            running: true
+                            
+                            onExited: function(checkExitCode) {
+                                // Если процесс найден, убиваем его
+                                if (checkExitCode === 0) {
+                                    var killProcess = Qt.createQmlObject(\`
+                                        import QtQuick
+                                        import Quickshell
+                                        import Quickshell.Io
+                                        import qs.Commons
+                                        Process {
+                                            id: killProc
+                                            command: ["pkill", "-9", "-f", "transmission-daemon"]
+                                            running: true
+                                            
+                                            onExited: function(killExitCode) {
+                                                root.daemonRunning = false;
+                                                root.torrentModel.clear();
+                                                root.errorMessage = "Демон остановлен";
+                                                refreshTimer.stop();
+                                                root.isLoading = false;
+                                            }
+                                        }
+                                    \`, checkProc);
+                                } else {
+                                    // Процесс уже завершен
                                     root.daemonRunning = false;
                                     root.torrentModel.clear();
                                     root.errorMessage = "Демон остановлен";
@@ -127,8 +168,8 @@ Item {
                                     root.isLoading = false;
                                 }
                             }
-                        ', stopProc);
-                    }
+                        }
+                    ', stopProc);
                 }
             }
         `, root);
@@ -145,6 +186,7 @@ Item {
             import Quickshell.Io
             import qs.Commons
             Process {
+                id: checkDaemonProc
                 command: ["transmission-remote", "--session-info"]
                 running: true
                 
@@ -153,6 +195,7 @@ Item {
                     if (exitCode === 0) {
                         root.daemonRunning = true;
                         root.errorMessage = "";
+                        root.isLoading = false;
                         if (!refreshTimer.running) {
                             refreshTimer.start();
                             root.refreshTorrents();
@@ -373,75 +416,62 @@ Item {
     }
     
     function parseAndUpdateTorrents(output) {
-        var lines = output.trim().split('\n');
-        var foundTorrents = [];
-        
-        var dataStartIndex = -1;
-        for (var i = 0; i < lines.length; i++) {
-            if (lines[i].includes("ID") && lines[i].includes("Done") && lines[i].includes("Name")) {
-                dataStartIndex = i + 1;
-                break;
-            }
-        }
-        
-        if (dataStartIndex === -1) return;
-        
-        if (dataStartIndex < lines.length && lines[dataStartIndex].includes("---")) {
-            dataStartIndex++;
-        }
-        
-        for (var j = dataStartIndex; j < lines.length; j++) {
-            var line = lines[j].trim();
-            if (line === "" || line.startsWith("Sum:")) continue;
-            
-            var torrent = parseTorrentLine(line);
-            if (torrent) {
-                foundTorrents.push(torrent);
-            }
-        }
-        
-        if (foundTorrents.length > 0) {
-            smoothUpdateModel(foundTorrents);
-        }
-    }
-    
-    function parseTorrentLine(line) {
         try {
-            line = line.replace(/\s+/g, ' ').trim();
-            var parts = line.split(' ');
+            var jsonData = JSON.parse(output);
             
-            if (parts.length < 9) return null;
+            if (jsonData.result !== "success" || !jsonData.arguments.torrents) {
+                return;
+            }
             
-            var idStr = parts[0];
-            var hasStar = idStr.endsWith('*');
-            var id = parseInt(hasStar ? idStr.slice(0, -1) : idStr);
+            var foundTorrents = [];
+            var torrents = jsonData.arguments.torrents;
             
-            var percent = parseInt(parts[1].replace('%', ''));
-            
-            var status = "unknown";
-            for (var i = 4; i < parts.length; i++) {
-                if (isStatusWord(parts[i])) {
-                    status = parseStatus(parts[i]);
-                    if (percent === 100 && status === "idle") {
-                        status = "completed";
-                    }
-                    break;
+            for (var i = 0; i < torrents.length; i++) {
+                var torrent = torrents[i];
+                var parsedTorrent = parseJsonTorrent(torrent);
+                if (parsedTorrent) {
+                    foundTorrents.push(parsedTorrent);
                 }
             }
             
-            var name = "";
-            for (var j = i + 1; j < parts.length; j++) {
-                if (name) name += " ";
-                name += parts[j];
+            if (foundTorrents.length > 0) {
+                smoothUpdateModel(foundTorrents);
+            }
+        } catch (error) {
+            return;
+        }
+    }
+    
+    function parseJsonTorrent(torrent) {
+        try {
+            if (!torrent.id || !torrent.name) {
+                return null;
             }
             
-            if (!name) name = "Без названия";
+            var percent = 0;
+            if (torrent.sizeWhenDone && torrent.sizeWhenDone > 0) {
+                var downloaded = torrent.sizeWhenDone - torrent.leftUntilDone;
+                percent = Math.round((downloaded / torrent.sizeWhenDone) * 100);
+            } else if (torrent.percentDone) {
+                percent = Math.round(torrent.percentDone * 100);
+            }
+            
+            percent = Math.min(100, Math.max(0, percent));
+            
+            var status = "unknown";
+            if (torrent.status !== undefined) {
+                status = parseJsonStatus(torrent.status);
+                
+                if (torrent.isFinished && status === "idle") {
+                    status = "completed";
+                }
+            }
             
             return {
-                "id": id,
+                "id": torrent.id,
                 "percent": percent,
                 "status": status,
-                "name": name
+                "name": torrent.name || "Без названия"
             };
             
         } catch (error) {
@@ -449,19 +479,17 @@ Item {
         }
     }
     
-    function isStatusWord(word) {
-        var statusWords = ["Idle", "Seeding", "Downloading", "Stopped", "Verifying", "Queued", "Finished", "Paused", "Up", "Down"];
-        return statusWords.includes(word);
-    }
-    
-    function parseStatus(statusStr) {
-        if (statusStr === "Stopped" || statusStr === "Paused") return "stopped";
-        if (statusStr === "Idle" || statusStr === "Finished") return "idle";
-        if (statusStr === "Downloading" || statusStr === "Down") return "downloading";
-        if (statusStr === "Seeding" || statusStr === "Up") return "seeding";
-        if (statusStr === "Verifying") return "verifying";
-        if (statusStr === "Queued") return "queued";
-        return "unknown";
+    function parseJsonStatus(statusCode) {
+        switch(statusCode) {
+            case 0: return "stopped";
+            case 1: return "queued";
+            case 2: return "verifying";
+            case 3: return "queued";
+            case 4: return "downloading";
+            case 5: return "queued";
+            case 6: return "seeding";
+            default: return "unknown";
+        }
     }
     
     function smoothUpdateModel(newTorrents) {

@@ -151,7 +151,7 @@ Item {
                     case "seeding": return Color.mSecondary;
                     case "completed": return Color.mTertiary;
                     case "stopped": return Color.mError;
-                    case "verifying": return Color.mWarning;
+                    case "verifying": return Color.mHover;
                     case "queued": return Color.mInfo;
                     case "idle": return Color.mOutline;
                     default: return Color.mOutline;
@@ -540,7 +540,7 @@ Item {
                                         }
                                         
                                         NText {
-                                            text: pluginApi?.tr("addTorrentTitle") || "Добавить торрент"
+                                            text: pluginApi?.tr("addTorrentTitle")
                                             color: Color.mOnSurface
                                             font.pointSize: Style.fontSizeL
                                             font.weight: Font.Bold
@@ -553,7 +553,7 @@ Item {
                                 }
                                 
                                 NText {
-                                    text: pluginApi?.tr("enterMagnetLink") || "Magnet ссылка:"
+                                    text: pluginApi?.tr("enterMagnetLink")
                                     color: Color.mOnSurfaceVariant
                                     font.pointSize: Style.fontSizeS
                                     Layout.topMargin: Style.marginS
@@ -597,7 +597,7 @@ Item {
                                     }
                                     
                                     NText {
-                                        text: pluginApi?.tr("or") || "ИЛИ"
+                                        text: pluginApi?.tr("or")
                                         color: Color.mOnSurfaceVariant
                                         font.pointSize: Style.fontSizeXS
                                         font.weight: Font.Medium
@@ -641,7 +641,7 @@ Item {
                                         
                                         NIconButton {
                                             icon: "x"
-                                            tooltipText: pluginApi?.tr("clear") || "Очистить"
+                                            tooltipText: pluginApi?.tr("clear")
                                             onClicked: {
                                                 root.torrentFilePath = "";
                                             }
@@ -651,9 +651,7 @@ Item {
                                 
                                 NButton {
                                     Layout.fillWidth: true
-                                    text: root.torrentFilePath ? 
-                                          (pluginApi?.tr("changeFile") || "Изменить файл") : 
-                                          (pluginApi?.tr("selectFile") || "Выбрать .torrent файл")
+                                    text: root.torrentFilePath ? (pluginApi?.tr("changeFile")) : (pluginApi?.tr("selectFile"))
                                     icon: "folder"
                                     onClicked: {
                                         torrentFilePicker.openFilePicker();
@@ -662,7 +660,7 @@ Item {
                                 
                                 NFilePicker {
                                     id: torrentFilePicker
-                                    title: pluginApi?.tr("selectTorrentFile") || "Выберите .torrent файл"
+                                    title: pluginApi?.tr("selectFile")
                                     selectionMode: "files"
                                     nameFilters: ["*.torrent"]
                                     showHiddenFiles: false
@@ -688,7 +686,7 @@ Item {
                                     
                                     NButton {
                                         Layout.fillWidth: true
-                                        text: pluginApi?.tr("cancel") || "Отмена"
+                                        text: pluginApi?.tr("cancel")
                                         outlined: true
                                         onClicked: {
                                             root.addTorrentMode = false;
@@ -699,7 +697,7 @@ Item {
                                     
                                     NButton {
                                         Layout.fillWidth: true
-                                        text: pluginApi?.tr("addTorrentTitle") || "Добавить"
+                                        text: pluginApi?.tr("addTorrentTitle")
                                         icon: "plus"
                                         enabled: root.magnetLink || root.torrentFilePath
                                         onClicked: {
