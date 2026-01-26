@@ -19,7 +19,7 @@ Item {
     
     Timer {
         id: refreshTimer
-        interval: 5000
+        interval: pluginApi?.manifest?.metadata?.refreshInterval 
         running: false
         repeat: true
         onTriggered: {

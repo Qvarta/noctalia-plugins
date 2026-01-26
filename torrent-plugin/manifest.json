@@ -3,7 +3,7 @@
     "name": "Torrent Plugin",
     "version": "0.1.3",
     "author": "Qvarta",
-    "description": "Виджет для просмотра и управления torrent-клиентом Transmission",
+    "description": "Widget for viewing and managing torrent downloads",
     "license": "MIT",
     "entryPoints": {
         "main": "Main.qml",
