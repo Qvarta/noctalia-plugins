@@ -11,7 +11,7 @@ Item {
     
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 280 * Style.uiScaleRatio
-    property real contentPreferredHeight: 520 * Style.uiScaleRatio
+    property real contentPreferredHeight: 480 * Style.uiScaleRatio
     readonly property bool allowAttach: true
     property int itemHeight: 56
 
@@ -312,7 +312,7 @@ Item {
                         id: appDelegate
                         width: appListView.width
                         height: itemHeight
-                        color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mPrimary : "transparent"
+                        color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mPrimary : Color.mSurface
                         radius: Style.radiusS
 
                         MouseArea {
