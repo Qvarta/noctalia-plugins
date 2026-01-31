@@ -31,6 +31,7 @@
 
     - Обновить preferredHeight для учета высоты вашего виджета
     ```
+        preferredHeight: {
         ...
         case "sysmonitor-card": 
                 height += sysMonitorHeight;
