@@ -355,13 +355,6 @@ Item {
                     Layout.fillWidth: true
                     
                     NText {
-                        text: pluginApi?.tr("tooltipLabel")
-                        color: Color.mOnSurface
-                        font.pointSize: Style.fontSizeL
-                        font.weight: Font.Bold
-                    }
-                    
-                    NText {
                         text: {
                             if (!daemonRunning) return pluginApi?.tr("stopped");
                             if (!torrentModel) return pluginApi?.tr("downloading");
@@ -369,7 +362,7 @@ Item {
                             return torrentModel.count + " " + pluginApi?.tr("active");
                         }
                         color: errorMessage || !daemonRunning ? Color.mError : Color.mOnSurfaceVariant
-                        font.pointSize: Style.fontSizeS
+                        font.pointSize: Style.fontSizeM
                     }
                 }
                 
