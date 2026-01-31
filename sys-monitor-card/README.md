@@ -32,7 +32,7 @@
     - Обновить preferredHeight для учета высоты вашего виджета
     ```
         ...
-        case "sysmonitor-card": // ← Добавьте этот case
+        case "sysmonitor-card": 
                 height += sysMonitorHeight;
                 break;
         ...
