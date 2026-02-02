@@ -300,14 +300,22 @@ Item {
                 border.width: Style.borderS
                 border.color: Color.mOutline
 
-                NListView {
+                ListView {
                     id: appListView
                     anchors.fill: parent
                     anchors.margins: Style.marginS
                     model: pluginApi && pluginApi.mainInstance ? pluginApi.mainInstance.getFilteredApps() : []
                     spacing: 2
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
                     
+                    // Скрытый скроллбар
+                    ScrollBar.vertical: ScrollBar {
+                        id: scrollBar
+                        policy: ScrollBar.AsNeeded
+                        visible: false // Полностью скрываем скроллбар
+                    }
+
                     delegate: Rectangle {
                         id: appDelegate
                         width: appListView.width

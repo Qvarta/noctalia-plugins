@@ -123,161 +123,139 @@ Item {
                 border.width: Style.borderS
                 border.color: Color.mOutline
 
-                Flickable {
-                    id: flickable
+                ListView {
+                    id: listView
                     anchors.fill: parent
                     anchors.margins: Style.marginS
-                    contentWidth: width
-                    contentHeight: column.implicitHeight
+                    model: pluginApi && pluginApi.mainInstance ? 
+                           pluginApi.mainInstance.getStations() : []
+                    spacing: 6
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
                     
+                    // Скрытый скроллбар
                     ScrollBar.vertical: ScrollBar {
                         id: scrollBar
                         policy: ScrollBar.AsNeeded
-                        width: 6
-                        contentItem: Rectangle {
-                            implicitWidth: 6
-                            implicitHeight: 100
-                            radius: 3
-                            color: Color.mOnSurfaceVariant
-                            opacity: 0.5
+                        visible: false // Полностью скрываем скроллбар
+                    }
+
+                    delegate: Rectangle {
+                        id: stationButton
+                        width: listView.width
+                        height: 56
+                        color: {
+                            var isPlaying = (pluginApi && pluginApi.mainInstance &&
+                                            pluginApi.mainInstance.currentPlayingProcessState === "start" &&
+                                            pluginApi.mainInstance.currentPlayingStation === modelData.name);
                             
-                            Behavior on opacity {
-                                NumberAnimation { duration: 200 }
+                            if (isPlaying) {
+                                return Color.mSurface;
+                            } else if (mouseArea.containsPress) {
+                                return Qt.darker(Color.mSurface, 1.1);
+                            } else if (mouseArea.containsMouse) {
+                                return Qt.darker(Color.mSurface, 1.05);
+                            } else {
+                                return Color.mSurface;
                             }
                         }
-                        
-                        background: Rectangle {
-                            color: Color.mSurface
+                        radius: Style.radiusS
+                        border.width: Style.borderS
+                        border.color: mouseArea.containsMouse ? Color.mOutline : Color.mSurface
+
+                        property string stationName: modelData.name
+                        property string stationUrl: modelData.url
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Style.marginM
+                            spacing: Style.marginM
+
+                            Rectangle {
+                                width: 32
+                                height: 32
+                                radius: 16
+                                color: stationButton.isPlaying ? Color.mPrimary : Color.mSurface
+                                border.width: Style.borderS
+                                border.color: stationButton.isPlaying ? Color.mPrimary : Color.mOutline
+                                
+                                NIcon {
+                                    anchors.centerIn: parent
+                                    icon: stationButton.isPlaying ? "player-play-filled" : "radio"
+                                    color: stationButton.isPlaying ? Color.mOnPrimary : Color.mPrimary
+                                    pointSize: 16
+                                }
+                            }
+
+                            NText {
+                                text: modelData.name
+                                color: Color.mOnSurface
+                                font.pointSize: Style.fontSizeS
+                                font.weight: stationButton.isPlaying ? Font.Bold : Font.Normal
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        readonly property bool isPlaying: (pluginApi && pluginApi.mainInstance &&
+                                                          pluginApi.mainInstance.currentPlayingProcessState === "start" &&
+                                                          pluginApi.mainInstance.currentPlayingStation === modelData.name)
+
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: {
+                                if (pluginApi && pluginApi.mainInstance) {
+                                    var main = pluginApi.mainInstance;
+                                    var isCurrentlyPlaying = (main.currentPlayingProcessState === "start" &&
+                                                             main.currentPlayingStation === stationName);
+                                    
+                                    if (isCurrentlyPlaying) {
+                                        main.stopPlayback();
+                                    } else {
+                                        main.playStation(stationName, stationUrl);
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    Column {
-                        id: column
-                        width: parent.width
-                        spacing: 6
+                    Item {
+                        anchors.centerIn: parent
+                        width: parent.width - 40
+                        height: 120
+                        visible: listView.count === 0
 
-                        Repeater {
-                            model: pluginApi && pluginApi.mainInstance ? 
-                                   pluginApi.mainInstance.getStations() : []
-
-                            Rectangle {
-                                id: stationButton
-                                width: column.width
-                                height: 56
-                                color: {
-                                    var isPlaying = (pluginApi && pluginApi.mainInstance &&
-                                                    pluginApi.mainInstance.currentPlayingProcessState === "start" &&
-                                                    pluginApi.mainInstance.currentPlayingStation === modelData.name);
-                                    
-                                    if (isPlaying) {
-                                        return Color.mSurface;
-                                    } else if (mouseArea.containsPress) {
-                                        return Qt.darker(Color.mSurface, 1.1);
-                                    } else if (mouseArea.containsMouse) {
-                                        return Qt.darker(Color.mSurface, 1.05);
-                                    } else {
-                                        return Color.mSurface;
-                                    }
-                                }
-                                radius: Style.radiusS
-                                border.width: Style.borderS
-                                border.color: mouseArea.containsMouse ? Color.mOutline : Color.mSurface
-
-                                property string stationName: modelData.name
-                                property string stationUrl: modelData.url
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: Style.marginM
-                                    spacing: Style.marginM
-
-                                    Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: 16
-                                        color: stationButton.isPlaying ? Color.mPrimary : Color.mSurface
-                                        border.width: Style.borderS
-                                        border.color: stationButton.isPlaying ? Color.mPrimary : Color.mOutline
-                                        
-                                        NIcon {
-                                            anchors.centerIn: parent
-                                            icon: stationButton.isPlaying ? "player-play-filled" : "radio"
-                                            color: stationButton.isPlaying ? Color.mOnPrimary : Color.mPrimary
-                                            pointSize: 16
-                                        }
-                                    }
-
-                                    NText {
-                                        text: modelData.name
-                                        color: Color.mOnSurface
-                                        font.pointSize: Style.fontSizeS
-                                        font.weight: stationButton.isPlaying ? Font.Bold : Font.Normal
-                                        elide: Text.ElideRight
-                                        Layout.fillWidth: true
-                                    }
-                                }
-
-                                readonly property bool isPlaying: (pluginApi && pluginApi.mainInstance &&
-                                                                  pluginApi.mainInstance.currentPlayingProcessState === "start" &&
-                                                                  pluginApi.mainInstance.currentPlayingStation === modelData.name)
-
-                                MouseArea {
-                                    id: mouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-
-                                    onClicked: {
-                                        if (pluginApi && pluginApi.mainInstance) {
-                                            var main = pluginApi.mainInstance;
-                                            var isCurrentlyPlaying = (main.currentPlayingProcessState === "start" &&
-                                                                     main.currentPlayingStation === stationName);
-                                            
-                                            if (isCurrentlyPlaying) {
-                                                main.stopPlayback();
-                                            } else {
-                                                main.playStation(stationName, stationUrl);
-                                            }
-                                        }
-                                    }
-                                }
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: Style.marginM
+                            
+                            NIcon {
+                                icon: "radio"
+                                color: Color.mOnSurfaceVariant
+                                opacity: 0.5
+                                Layout.alignment: Qt.AlignHCenter
+                                pointSize: 16
                             }
-                        }
-
-                        Item {
-                            width: column.width
-                            height: 120
-                            visible: column.children.length === 1
-
-                            ColumnLayout {
-                                anchors.centerIn: parent
-                                spacing: Style.marginM
-                                
-                                NIcon {
-                                    icon: "radio"
-                                    color: Color.mOnSurfaceVariant
-                                    opacity: 0.5
-                                    Layout.alignment: Qt.AlignHCenter
-                                    pointSize: 16
-                                }
-                                
-                                NText {
-                                    text: pluginApi?.tr("NotLoaded")
-                                    color: Color.mOnSurfaceVariant
-                                    font.pointSize: Style.fontSizeM
-                                    font.weight: Font.Medium
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-                                
-                                NText {
-                                    text: pluginApi?.tr("addStations")
-                                    color: Color.mOnSurfaceVariant
-                                    font.pointSize: Style.fontSizeS
-                                    opacity: 0.7
-                                    Layout.alignment: Qt.AlignHCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
+                            
+                            NText {
+                                text: pluginApi?.tr("NotLoaded")
+                                color: Color.mOnSurfaceVariant
+                                font.pointSize: Style.fontSizeM
+                                font.weight: Font.Medium
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            
+                            NText {
+                                text: pluginApi?.tr("addStations")
+                                color: Color.mOnSurfaceVariant
+                                font.pointSize: Style.fontSizeS
+                                opacity: 0.7
+                                Layout.alignment: Qt.AlignHCenter
+                                horizontalAlignment: Text.AlignHCenter
                             }
                         }
                     }
