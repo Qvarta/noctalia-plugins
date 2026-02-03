@@ -127,15 +127,18 @@ NBox {
             Column {
                 anchors.centerIn: parent
                 width: parent.width
-                spacing: Style.marginS
+                spacing: Style.marginXL
                 
                 // Иконка погоды
                 NIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     height: 70 * Style.uiScaleRatio
-                    icon: weatherReady ? LocationService.weatherSymbolFromCode(LocationService.data.weather.current_weather.weathercode) : ""
-                    pointSize: Style.fontSizeXXXL * 2.5
-                    color: Color.mHover
+                    icon: weatherReady ? LocationService.weatherSymbolFromCode(
+                        LocationService.data.weather.current_weather.weathercode,
+                        LocationService.data.weather.current_weather.is_day
+                        ) : ""
+                    pointSize: Style.fontSizeXXXL * 3
+                    color: Qt.rgba(Color.mHover.r, Color.mHover.g, Color.mHover.b, 0.7)
                 }
                 
                 // Текущая температура
@@ -159,33 +162,6 @@ NBox {
                     color: Color.mHover
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
-                
-                // Описание погоды
-                NText {
-                    visible: weatherReady
-                    text: {
-                        if (!weatherReady) return "";
-                        var code = LocationService.data.weather.current_weather.weathercode;
-                        
-                        if (code === 0) return I18n.tr("weather.clear-sky");
-                        if (code === 1 || code === 2) return I18n.tr("weather.mainly-clear");
-                        if (code === 3) return I18n.tr("weather.overcast");
-                        if (code >= 45 && code <= 48) return I18n.tr("weather.fog");
-                        if (code >= 51 && code <= 67) return I18n.tr("weather.drizzle");
-                        if (code >= 80 && code <= 82) return I18n.tr("weather.rain-showers");
-                        if (code >= 71 && code <= 77) return I18n.tr("weather.snow");
-                        if (code >= 85 && code <= 86) return I18n.tr("weather.snow");
-                        if (code >= 95 && code <= 99) return I18n.tr("weather.thunderstorm");
-                        return I18n.tr("weather.partly-cloudy");
-                    }
-                    pointSize: Style.fontSizeM
-                    color: Color.mHover
-                    font.weight: Style.fontWeightMedium
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                    width: parent.width
-                }
             }
         }
         
@@ -196,7 +172,7 @@ NBox {
             visible: weatherReady
         }
         
-        // ПРАВАЯ ЧАСТЬ: Прогноз на несколько дней
+        // ПРАВАЯ ЧАСТЬ: Прогноз на 6 дней
         Item {
             width: parent.width * 0.75 - Style.marginL
             height: parent.height
@@ -215,14 +191,455 @@ NBox {
                 model: weatherReady ? root.forecastDays : 0
                 
                 delegate: Item {
+                    id: dayDelegate
                     width: forecastList.width
                     height: 38 * Style.uiScaleRatio
                     
+                    function hPaToMmHg(hpa) {
+                        return Math.round(hpa * 0.750062);
+                    }
+                    
+                    function windDirectionToCardinal(degrees) {
+                        if (degrees === undefined || degrees === null) return "--";
+                        var directions = ["С", "ССВ", "СВ", "ВСВ", "В", "ВЮВ", "ЮВ", "ЮЮВ", "Ю", "ЮЮЗ", "ЮЗ", "ЗЮЗ", "З", "ЗСЗ", "СЗ", "ССЗ"];
+                        var index = Math.round((degrees % 360) / 22.5);
+                        return directions[index % 16];
+                    }
+                    
+                    // Popup для детальной информации
+                    Popup {
+                        id: dayPopup
+                        visible: false
+                        modal: false
+                        focus: false
+                        closePolicy: Popup.CloseOnPressOutsideParent
+                        padding: 0
+                        margins: 10
+                        
+                        x: dayDelegate.width + 20
+                        y: -dayDelegate.height * .7
+                        
+                        width: 280
+                        height: popupContent.height + 40
+                        
+                        background: Rectangle {
+                            id: popupBackground
+                            radius: 8
+                            
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: Qt.rgba(Color.mSurface.r, Color.mSurface.g, Color.mSurface.b, 0.95) }
+                                GradientStop { position: 1.0; color: Qt.rgba(Color.mSurfaceVariant.r, Color.mSurfaceVariant.g, Color.mSurfaceVariant.b, 0.95) }
+                            }
+                            
+                            border.color: Qt.rgba(Color.mOutline.r, Color.mOutline.g, Color.mOutline.b, 0.3)
+                            border.width: 1
+                        }
+                        
+                        // Контент Popup
+                        Column {
+                            id: popupContent
+                            anchors.centerIn: parent
+                            width: parent.width - 40
+                            spacing: 12
+                            
+                            // Заголовок с датой
+                            Column {
+                                width: parent.width
+                                spacing: 4
+                                
+                                Text {
+                                    text: {
+                                        try {
+                                            var dailyData = LocationService.data.weather.daily;
+                                            if (dailyData && dailyData.time && dailyData.time[index]) {
+                                                var dateStr = dailyData.time[index];
+                                                var weatherDate = new Date(dateStr.replace(/-/g, "/"));
+                                                return I18n.locale.toString(weatherDate, "d MMMM");
+                                            }
+                                        } catch(e) {
+                                            return "";
+                                        }
+                                        return "";
+                                    }
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeL
+                                    font.bold: true
+                                    color: Color.mTertiary
+                                    width: parent.width
+                                    wrapMode: Text.WordWrap
+                                }
+                                
+                                // Разделитель
+                                Rectangle {
+                                    width: parent.width
+                                    height: 1
+                                    color: Color.mOutline
+                                }
+                            }
+                            
+                            GridLayout {
+                                width: parent.width
+                                columns: 2
+                                columnSpacing: 20
+                                rowSpacing: 8
+                                
+                                // Температура
+                                Text {
+                                    text: "Температура:"
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+
+                                Row {
+                                    
+                                    Text {
+                                        text: {
+                                            try {
+                                                var dailyData = LocationService.data.weather.daily;
+                                                if (dailyData && dailyData.temperature_2m_max) {
+                                                    var max = dailyData.temperature_2m_max[index];
+                                                    
+                                                    if (Settings.data.location.useFahrenheit) {
+                                                        max = Math.round(LocationService.celsiusToFahrenheit(max));
+                                                    } else {
+                                                        max = Math.round(max);
+                                                    }
+                                                    
+                                                    var suffix = Settings.data.location.useFahrenheit ? "°F" : "°C";
+                                                    return max + suffix ;
+                                                }
+                                            } catch(e) {
+                                                return "--";
+                                            }
+                                            return "--";
+                                        }
+                                        font.family: Settings.data.ui.fontFixed
+                                        font.pointSize: Style.fontSizeM
+                                        color: Color.mOnSurface
+                                    }
+                                    
+                                    NIcon {
+                                        icon: "dots-vertical"
+                                        pointSize: Style.fontSizeM
+                                        color: Color.mHover
+                                        verticalAlignment: Image.AlignVCenter
+                                    }
+                                    
+                                    Text {
+                                        text: {
+                                            try {
+                                                var dailyData = LocationService.data.weather.daily;
+                                                if (dailyData && dailyData.temperature_2m_min) {
+                                                    var min = dailyData.temperature_2m_min[index];
+                                                    
+                                                    if (Settings.data.location.useFahrenheit) {
+                                                        min = Math.round(LocationService.celsiusToFahrenheit(min));
+                                                    } else {
+                                                        min = Math.round(min);
+                                                    }
+                                                    
+                                                    var suffix = Settings.data.location.useFahrenheit ? "°F" : "°C";
+                                                    return min + suffix;
+                                                }
+                                            } catch(e) {
+                                                return "--";
+                                            }
+                                            return "--";
+                                        }
+                                        font.family: Settings.data.ui.fontFixed
+                                        font.pointSize: Style.fontSizeM
+                                        color: Color.mOnSurface
+                                    }
+                                }
+
+                                // Text {
+                                //     text: {
+                                //         try {
+                                //             var dailyData = LocationService.data.weather.daily;
+                                //             if (dailyData && dailyData.temperature_2m_max && dailyData.temperature_2m_min) {
+                                //                 var max = dailyData.temperature_2m_max[index];
+                                //                 var min = dailyData.temperature_2m_min[index];
+                                                
+                                //                 if (Settings.data.location.useFahrenheit) {
+                                //                     max = Math.round(LocationService.celsiusToFahrenheit(max));
+                                //                     min = Math.round(LocationService.celsiusToFahrenheit(min));
+                                //                 } else {
+                                //                     max = Math.round(max);
+                                //                     min = Math.round(min);
+                                //                 }
+                                                
+                                //                 var suffix = Settings.data.location.useFahrenheit ? "°F" : "°C";
+                                //                 return max + suffix + " / " + min + suffix;
+                                //             }
+                                //         } catch(e) {
+                                //             return "--";
+                                //         }
+                                //         return "--";
+                                //     }
+                                //     font.family: Settings.data.ui.fontFixed
+                                //     font.pointSize: Style.fontSizeM
+                                //     color: Color.mPrimary
+                                // }
+                                
+                                // Погодные условия
+                                Text {
+                                    text: "Состояние:"
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                Text {
+                                    text: {
+                                        try {
+                                            var dailyData = LocationService.data.weather.daily;
+                                            if (dailyData && dailyData.weathercode) {
+                                                var code = dailyData.weathercode[index];
+                                                var condition =  LocationService.weatherDescriptionFromCode(code).toLowerCase();
+                                                return I18n.tr(`weather.${condition}`);
+                                            }
+                                        } catch(e) {
+                                            return "--";
+                                        }
+                                        return "--";
+                                    }
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                // Ветер
+                                Text {
+                                    text: "Ветер:"
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeS
+                                    color:Color.mOnSurface
+                                }
+                                
+                                Row {
+                                    spacing: 3
+                                    
+                                    Text {
+                                        text: {
+                                            try {
+                                                var dailyData = LocationService.data.weather.daily;
+                                                if (dailyData && dailyData.wind_speed_10m_max) {
+                                                    var speed = dailyData.wind_speed_10m_max[index];
+                                                    return speed.toFixed(1) + " м/с";
+                                                }
+                                            } catch(e) {
+                                                return "--";
+                                            }
+                                            return "--";
+                                        }
+                                        font.family: Settings.data.ui.fontFixed
+                                        font.pointSize: Style.fontSizeM
+                                        color: Color.mOnSurface
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    
+                                    NIcon {
+                                        icon: "windsock"
+                                        pointSize: Style.fontSizeL
+                                        color: Color.mHover
+                                        verticalAlignment: Image.AlignVCenter
+                                    }
+                                    
+                                    Text {
+                                        text: {
+                                            try {
+                                                var dailyData = LocationService.data.weather.daily;
+                                                if (dailyData && dailyData.wind_direction_10m_dominant) {
+                                                    var dir = dailyData.wind_direction_10m_dominant[index];
+                                                    return windDirectionToCardinal(dir);
+                                                }
+                                            } catch(e) {
+                                                return "";
+                                            }
+                                            return "";
+                                        }
+                                        font.family: Settings.data.ui.fontFixed
+                                        font.pointSize: Style.fontSizeM
+                                        color: Color.mOnSurface
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                
+                                // Влажность
+                                Text {
+                                    text: "Влажность:"
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                Text {
+                                    text: {
+                                        try {
+                                            var dailyData = LocationService.data.weather.daily;
+                                            if (dailyData && dailyData.relative_humidity_2m_mean) {
+                                                var humidity = dailyData.relative_humidity_2m_mean[index];
+                                                return humidity + "%";
+                                            }
+                                        } catch(e) {
+                                            return "--";
+                                        }
+                                        return "--";
+                                    }
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                // Давление 
+                                Text {
+                                    text: "Давление:"
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                Text {
+                                    text: {
+                                        try {
+                                            var dailyData = LocationService.data.weather.daily;
+                                            if (dailyData && dailyData.surface_pressure_mean) {
+                                                var pressureHpa = dailyData.surface_pressure_mean[index];
+                                                var pressureMmHg = hPaToMmHg(pressureHpa);
+                                                return pressureMmHg + " мм.рт.ст";
+                                            }
+                                        } catch(e) {
+                                            return "--";
+                                        }
+                                        return "--";
+                                    }
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                // Восход
+                                Text {
+                                    text: "Восход:"
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                Text {
+                                    text: {
+                                        try {
+                                            var dailyData = LocationService.data.weather.daily;
+                                            if (dailyData && dailyData.sunrise) {
+                                                var sunrise = dailyData.sunrise[index];
+                                                var sunriseTime = new Date(sunrise.replace(/-/g, "/"));
+                                                return I18n.locale.toString(sunriseTime, "HH:mm");
+                                            }
+                                        } catch(e) {
+                                            return "--";
+                                        }
+                                        return "--";
+                                    }
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                // Закат
+                                Text {
+                                    text: "Закат:"
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                                
+                                Text {
+                                    text: {
+                                        try {
+                                            var dailyData = LocationService.data.weather.daily;
+                                            if (dailyData && dailyData.sunset) {
+                                                var sunset = dailyData.sunset[index];
+                                                var sunsetTime = new Date(sunset.replace(/-/g, "/"));
+                                                return I18n.locale.toString(sunsetTime, "HH:mm");
+                                            }
+                                        } catch(e) {
+                                            return "--";
+                                        }
+                                        return "--";
+                                    }
+                                    font.family: Settings.data.ui.fontFixed
+                                    font.pointSize: Style.fontSizeM
+                                    color: Color.mOnSurface
+                                }
+                            }
+                        }
+                        
+                        // Анимация появления
+                        enter: Transition {
+                            ParallelAnimation {
+                                NumberAnimation { 
+                                    property: "opacity"; 
+                                    from: 0; 
+                                    to: 1; 
+                                    duration: 150
+                                    easing.type: Easing.OutCubic
+                                }
+                                NumberAnimation { 
+                                    property: "scale"; 
+                                    from: 0.95; 
+                                    to: 1; 
+                                    duration: 150
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+                        }
+                        
+                        // Анимация скрытия
+                        exit: Transition {
+                            ParallelAnimation {
+                                NumberAnimation { 
+                                    property: "opacity"; 
+                                    from: 1; 
+                                    to: 0; 
+                                    duration: 100
+                                    easing.type: Easing.InCubic
+                                }
+                                NumberAnimation { 
+                                    property: "scale"; 
+                                    from: 1; 
+                                    to: 0.98; 
+                                    duration: 100
+                                    easing.type: Easing.InCubic
+                                }
+                            }
+                        }
+                    }
+                    
                     // Фон для каждого дня
                     Rectangle {
+                        id: dayBackground
                         anchors.fill: parent
                         color: index % 2 === 0 ? Color.mSurfaceVariant : Qt.rgba(Color.mOnSurface.r, Color.mOnSurface.g, Color.mOnSurface.b, 0.07) 
                         radius: 4
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        
+                        onEntered: {
+                            dayBackground.color = Qt.rgba(Color.mHover.r, Color.mHover.g, Color.mHover.b, 0.15);
+                            if (weatherReady) {
+                                dayPopup.open();
+                            }
+                        }
+                        
+                        onExited: {
+                            dayBackground.color = index % 2 === 0 ? Color.mSurfaceVariant : Qt.rgba(Color.mOnSurface.r, Color.mOnSurface.g, Color.mOnSurface.b, 0.07);
+                            dayPopup.close();
+                        }
                     }
                     
                     RowLayout {
@@ -310,18 +727,14 @@ NBox {
                                 color: Color.mOnSurface
                                 pointSize: Style.fontSizeS
                             }
-                            
-                            // NText {
-                            //     text: "/"
-                            //     color: Color.mOnSurface
-                            //     pointSize: Style.fontSizeM
-                            // }
+
                             NIcon {
-                              Layout.alignment: Qt.AlignVCenter
-                              icon: "dots-vertical"
-                              pointSize: Style.fontSizeM
-                              color: Color.mOnSurface
-                          }
+                            Layout.alignment: Qt.AlignVCenter
+                            icon: "dots-vertical"
+                            pointSize: Style.fontSizeM
+                            color: Color.mOnSurface
+                            }
+                            
                             NText {
                                 text: {
                                     if (!weatherReady) return "--°";
