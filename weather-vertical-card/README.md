@@ -10,6 +10,7 @@
 - Заменить LocationService.qml в папке noctalia-shell/Services/Location
 - Заменить ControlCenterPanel.qml в папке noctalia-shell/Modules/Panels/ControlCenter
 - Заменить ControlCenterTab.qml в папке noctalia-shell/Modules/Panels/Settings/Tabs/ControlCenter
+- Выбрать карточку в настройках центра управления
 
 ## P.S.
 
