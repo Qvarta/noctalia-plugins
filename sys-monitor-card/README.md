@@ -1,6 +1,6 @@
 # System Monitor для Control Center
 
-<img width="426" height="208" alt="preview1" src="https://github.com/user-attachments/assets/fa0baf42-0774-4967-8946-70add98b4859" />
+<img width="428" height="207" alt="preview" src="https://github.com/user-attachments/assets/b4d4971b-64ba-4b04-a8f5-b285cd4bc59f" />
 
 ## Установка 
 
