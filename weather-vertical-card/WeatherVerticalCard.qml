@@ -219,7 +219,7 @@ NBox {
                         x: dayDelegate.width + 20
                         y: -dayDelegate.height * .7
                         
-                        width: 280
+                        width: 360
                         height: popupContent.height + 40
                         
                         background: Rectangle {
@@ -397,6 +397,7 @@ NBox {
                                             if (dailyData && dailyData.weathercode) {
                                                 var code = dailyData.weathercode[index];
                                                 var condition =  LocationService.weatherDescriptionFromCode(code).toLowerCase();
+                                                condition = condition.replace(/\s+/g, '-');
                                                 return I18n.tr(`weather.${condition}`);
                                             }
                                         } catch(e) {

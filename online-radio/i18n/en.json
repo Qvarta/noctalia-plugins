@@ -15,9 +15,8 @@
   "addUrlDescription": "Enter radio stream URL",
   "addUrlHolder": "For example: http://stream.radiostation.com",
   "NotLoaded": "No stations loaded",
-  "available": "available",
+  "available": "Total: ",
   "nowPlay": "Now Playing",
   "notSelected":"No station selected",
-  "addStations": "Add stations via JSON file or manually in settings",
-  "radioList": "Radio Stations"
+  "addStations": "Add stations via JSON file or manually in settings"
 }

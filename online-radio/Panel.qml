@@ -13,6 +13,14 @@ Item {
     property real contentPreferredHeight: 400 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
+    readonly property bool isPlaying: pluginApi && pluginApi.mainInstance && 
+                                     pluginApi.mainInstance.currentPlayingProcessState === "start"
+
+    function isStationPlaying(stationName) {
+        return isPlaying && 
+               pluginApi.mainInstance.currentPlayingStation === stationName
+    }
+
     anchors.fill: parent
 
     Rectangle {
@@ -23,7 +31,7 @@ Item {
         
         ColumnLayout {
             anchors {
-                centerIn:parent
+                centerIn: parent
                 fill: parent
                 margins: Style.marginM
             }
@@ -38,9 +46,7 @@ Item {
                 border.width: Style.borderS
                 border.color: Color.mOutline
                 
-                visible: pluginApi && pluginApi.mainInstance && 
-                        pluginApi.mainInstance.currentPlayingProcessState === "start" && 
-                        pluginApi.mainInstance.currentPlayingStation !== ""
+                visible: isPlaying && pluginApi.mainInstance.currentPlayingStation !== ""
 
                 RowLayout {
                     anchors.fill: parent
@@ -133,11 +139,10 @@ Item {
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     
-                    // Скрытый скроллбар
                     ScrollBar.vertical: ScrollBar {
                         id: scrollBar
                         policy: ScrollBar.AsNeeded
-                        visible: false // Полностью скрываем скроллбар
+                        visible: false 
                     }
 
                     delegate: Rectangle {
@@ -145,26 +150,23 @@ Item {
                         width: listView.width
                         height: 56
                         color: {
-                            var isPlaying = (pluginApi && pluginApi.mainInstance &&
-                                            pluginApi.mainInstance.currentPlayingProcessState === "start" &&
-                                            pluginApi.mainInstance.currentPlayingStation === modelData.name);
-                            
-                            if (isPlaying) {
+                            if (isStationPlaying(stationName)) {
                                 return Color.mSurface;
                             } else if (mouseArea.containsPress) {
                                 return Qt.darker(Color.mSurface, 1.1);
                             } else if (mouseArea.containsMouse) {
-                                return Qt.darker(Color.mSurface, 1.05);
+                                return Color.mHover;
                             } else {
                                 return Color.mSurface;
                             }
                         }
                         radius: Style.radiusS
-                        border.width: Style.borderS
+                        border.width: Style.borderL
                         border.color: mouseArea.containsMouse ? Color.mOutline : Color.mSurface
 
                         property string stationName: modelData.name
                         property string stationUrl: modelData.url
+                        readonly property bool isPlaying: root.isStationPlaying(stationName)
 
                         RowLayout {
                             anchors.fill: parent
@@ -189,17 +191,27 @@ Item {
 
                             NText {
                                 text: modelData.name
-                                color: Color.mOnSurface
-                                font.pointSize: Style.fontSizeS
-                                font.weight: stationButton.isPlaying ? Font.Bold : Font.Normal
+                                color: {
+                                    if (stationButton.isPlaying) {
+                                        return Color.mOnSurface;
+                                    } else if (mouseArea.containsMouse) {
+                                        return Color.mOnHover;
+                                    } else {
+                                        return Color.mOnSurface;
+                                    }
+                                }
+                                font.pointSize: stationButton.isPlaying ? Style.fontSizeL : Style.fontSizeS
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
-                        }
 
-                        readonly property bool isPlaying: (pluginApi && pluginApi.mainInstance &&
-                                                          pluginApi.mainInstance.currentPlayingProcessState === "start" &&
-                                                          pluginApi.mainInstance.currentPlayingStation === modelData.name)
+                            NIcon {
+                                visible: mouseArea.containsMouse
+                                icon: stationButton.isPlaying ? "player-stop" : "player-play"
+                                color: stationButton.isPlaying ? Color.mPrimary : Color.mOnHover
+                                pointSize: 16
+                            }
+                        }
 
                         MouseArea {
                             id: mouseArea
@@ -210,10 +222,8 @@ Item {
                             onClicked: {
                                 if (pluginApi && pluginApi.mainInstance) {
                                     var main = pluginApi.mainInstance;
-                                    var isCurrentlyPlaying = (main.currentPlayingProcessState === "start" &&
-                                                             main.currentPlayingStation === stationName);
                                     
-                                    if (isCurrentlyPlaying) {
+                                    if (stationButton.isPlaying) {
                                         main.stopPlayback();
                                     } else {
                                         main.playStation(stationName, stationUrl);
@@ -264,18 +274,22 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: Style.marginXS
+                spacing: Style.marginXL
                 
-                ColumnLayout {
-                    spacing: Style.marginXS
+                Item {
                     Layout.fillWidth: true
-                    
-                    NText {
-                        text: pluginApi && pluginApi.mainInstance ? 
-                              pluginApi.mainInstance.getStations().length + " " + pluginApi?.tr("available") : ""
-                        color: Color.mOnSurfaceVariant
-                        font.pointSize: Style.fontSizeS
-                    }
+                }
+                
+                NText {
+                    text: pluginApi && pluginApi.mainInstance ? 
+                         pluginApi?.tr("available") + pluginApi.mainInstance.getStations().length : ""
+                    color: Color.mOnSurfaceVariant
+                    font.pointSize: Style.fontSizeM
+                    opacity: 0.8
+                }
+                
+                Item {
+                    Layout.fillWidth: true
                 }
             }
         }

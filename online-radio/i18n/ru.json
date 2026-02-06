@@ -15,9 +15,8 @@
   "addUrlDescription":"Введите ссылку на поток радиостанции",
   "addUrlHolder":"Например: http://stream.radiostation.com",
   "NotLoaded":"Станции не загружены",
-  "available":"доступно",
+  "available":"Всего: ",
   "nowPlay":"Воспроизводится",
   "notSelected":"Не выбрана станция",
-  "addStations":"Добававьте станции через JSON-файл или вручную в настройках",
-  "radioList": "Радио Станции"
+  "addStations":"Добававьте станции через JSON-файл или вручную в настройках"
 }

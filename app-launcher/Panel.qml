@@ -309,11 +309,10 @@ Item {
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     
-                    // Скрытый скроллбар
                     ScrollBar.vertical: ScrollBar {
                         id: scrollBar
                         policy: ScrollBar.AsNeeded
-                        visible: false // Полностью скрываем скроллбар
+                        visible: false 
                     }
 
                     delegate: Rectangle {
@@ -389,8 +388,7 @@ Item {
                                     color: Color.mOnSurfaceVariant
                                     width: 24
                                     height: 24
-                                    visible: !modelData.icon || 
-                                            (typeof modelData.icon === 'string' && modelData.icon.trim() === '')
+                                    visible: !modelData.icon || (typeof modelData.icon === 'string' && modelData.icon.trim() === '')
                                 }
                             }
 
@@ -407,13 +405,12 @@ Item {
                                 width: 32
                                 height: 32
                                 radius: 16
-                                color: Color.mPrimary
-                                opacity: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? 1 : 0
-                                
+                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mSurface : "transparent"
+
                                 NIcon {
                                     anchors.centerIn: parent
                                     icon: "chevron-right"
-                                    color: Color.mOnPrimary
+                                    color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mOnSurface : "transparent"
                                     width: 16
                                     height: 16
                                 }
@@ -507,6 +504,7 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: visible ? 30 : 0
+                Layout.alignment: Qt.AlignHCenter 
                 color: "transparent"
                 
                 visible: {
@@ -516,22 +514,19 @@ Item {
                 }
 
                 NText {
-                    anchors.left: parent.left
-                    anchors.rightMargin: Style.marginM
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.centerIn: parent
                     text: {
                         if (!pluginApi || !pluginApi.mainInstance) return "";
                         var currentTab = pluginApi.mainInstance.currentTab;
                         var total = currentTab === 0 ? 
-                                   (pluginApi.mainInstance.allApps ? pluginApi.mainInstance.allApps.length : 0) : 
-                                   (pluginApi.mainInstance.favoriteApps ? pluginApi.mainInstance.favoriteApps.length : 0);
+                                (pluginApi.mainInstance.allApps ? pluginApi.mainInstance.allApps.length : 0) : 
+                                (pluginApi.mainInstance.favoriteApps ? pluginApi.mainInstance.favoriteApps.length : 0);
                         var filteredApps = pluginApi.mainInstance.getFilteredApps();
-                        // var showing = filteredApps.length;
                         return  "Всего: " + total + " приложений";
                     }
                     color: Color.mOnSurfaceVariant
-                    font.pointSize: Style.fontSizeS
-                    opacity: 0.7
+                    font.pointSize: Style.fontSizeM
+                    opacity: 0.8
                 }
             }
         }
