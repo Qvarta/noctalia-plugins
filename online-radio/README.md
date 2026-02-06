@@ -7,9 +7,6 @@ A plugin for Noctalia Shell that provides online radio streaming functionality d
 ## Dependencies
 
 - **VLC Media Player**: Required for audio streaming playback. Install with:
-  - Ubuntu/Debian: `sudo apt install vlc`
-  - Fedora: `sudo dnf install vlc`
-  - Arch: `sudo pacman -S vlc`
   - ALT: `sudo apt-get install vlc`
 
 
