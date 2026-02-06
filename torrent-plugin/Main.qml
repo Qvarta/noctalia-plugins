@@ -19,7 +19,7 @@ Item {
     
     Timer {
         id: refreshTimer
-        interval: pluginApi?.manifest?.metadata?.refreshInterval 
+        interval: pluginApi?.manifest?.metadata?.refreshInterval
         running: false
         repeat: true
         onTriggered: {
@@ -383,6 +383,14 @@ Item {
             return;
         }
         
+        // Сразу удаляем из модели
+        for (var i = 0; i < torrentModel.count; i++) {
+            if (torrentModel.get(i).id === torrentId) {
+                torrentModel.remove(i);
+                break;
+            }
+        }
+        
         root.isLoading = true;
         
         var deleteProcess = Qt.createQmlObject(`
@@ -406,15 +414,18 @@ Item {
                     
                     if (exitCode === 0) {
                         root.errorMessage = "";
+                        // Обновляем список, чтобы убедиться, что все синхронизировано
                         root.refreshTorrents();
                     } else {
                         root.errorMessage = "Ошибка удаления торрента";
+                        // Если удаление не удалось, нужно вернуть торрент в модель
+                        root.refreshTorrents();
                     }
                 }
             }
         `, root);
     }
-    
+
     function parseAndUpdateTorrents(output) {
         try {
             var jsonData = JSON.parse(output);
@@ -549,7 +560,7 @@ Item {
     }
     
     IpcHandler {
-        target: "plugin:torrent-widget"
+        target: "plugin:transmission-widget"
         
         function toggle() {
             if (pluginApi) {

@@ -9,8 +9,22 @@ Item {
     property var pluginApi: null
     
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 350 * Style.uiScaleRatio
-    property real contentPreferredHeight: 450 * Style.uiScaleRatio
+    property real contentPreferredWidth: daemonRunning ? 350 * Style.uiScaleRatio : 180 * Style.uiScaleRatio
+    property real contentPreferredHeight: {
+        if (!daemonRunning) return 100 * Style.uiScaleRatio;
+        if (addTorrentMode) return 310 * Style.uiScaleRatio;
+        
+        var headerHeight = 50; 
+        var itemHeight = 52; 
+        var spacing = 8; 
+        var padding = 32; 
+        
+        var totalTorrentsHeight = torrentModel ? (torrentModel.count * itemHeight + Math.max(0, torrentModel.count - 1) * spacing) : 0;
+        var totalHeight = headerHeight + totalTorrentsHeight + padding;
+        
+        var maxHeight = 500 * Style.uiScaleRatio;
+        return Math.min(maxHeight, totalHeight);
+    }
     readonly property bool allowAttach: true
     
     property ListModel torrentModel: pluginApi?.mainInstance?.torrentModel || null
@@ -43,13 +57,24 @@ Item {
                     }
                 } else if (action === "delete") {
                     if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
+                        // Обновляем модель сразу после удаления
                         pluginApi.mainInstance.deleteTorrent(currentTorrent.torrentId);
+                        
+                        var torrentModel = pluginApi.mainInstance.torrentModel;
+                        if (torrentModel) {
+                            for (var i = 0; i < torrentModel.count; i++) {
+                                if (torrentModel.get(i).id === currentTorrent.torrentId) {
+                                    torrentModel.remove(i);
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
             close();
         }
-        
+
         function updateMenuModel() {
             if (!currentTorrent) return;
             
@@ -133,76 +158,101 @@ Item {
         property string torrentName: ""
         property int torrentPercent: 0
         property string torrentStatus: ""
+        property int itemIndex: 0
         
         width: parent.width
-        height: 70
-        radius: Style.radiusS
-        color: Color.mSurface
-        border.width: Style.borderS
-        border.color: Color.mOutline
+        height: 52
+        radius: 8
+        color: itemIndex % 2 === 0 ? Color.mSurface :  Color.mSurfaceVariant
         
-        Rectangle {
-            width: 4
-            height: parent.height
-            radius: 2
-            color: {
-                switch(torrentRoot.torrentStatus) {
-                    case "downloading": return Color.mPrimary;
-                    case "seeding": return Color.mSecondary;
-                    case "completed": return Color.mTertiary;
-                    case "stopped": return Color.mError;
-                    case "verifying": return Color.mHover;
-                    case "queued": return Color.mInfo;
-                    case "idle": return Color.mOutline;
-                    default: return Color.mOutline;
-                }
-            }
-        }
-        
-        ColumnLayout {
+        RowLayout {
             anchors {
                 fill: parent
-                leftMargin: 16
+                leftMargin: 12
                 rightMargin: 12
-                topMargin: 8
-                bottomMargin: 8
             }
-            spacing: 4
+            spacing: 10
             
-            NText {
-                Layout.fillWidth: true
-                text: torrentRoot.torrentName
-                color: Color.mOnSurface
-                font.pointSize: Style.fontSizeS
-                font.weight: Font.Medium
-                elide: Text.ElideRight
-                maximumLineCount: 1
+            NIcon {
+                Layout.preferredWidth: 24
+                Layout.alignment: Qt.AlignVCenter
+                icon: {
+                    if (torrentRoot.torrentStatus === "downloading") return "download";
+                    if (torrentRoot.torrentStatus === "stopped") return "player-pause";
+                    if (torrentRoot.torrentStatus === "completed") return "check";
+                    if (torrentRoot.torrentStatus === "seeding") return "upload";
+                    if (torrentRoot.torrentStatus === "verifying") return "shield-check";
+                    if (torrentRoot.torrentStatus === "queued") return "clock";
+                    if (torrentRoot.torrentStatus === "idle") return "clock";
+                    return "help-circle";
+                }
+                color: {
+                    switch(torrentRoot.torrentStatus) {
+                        case "downloading": return Color.mPrimary;
+                        case "seeding": return Color.mSecondary;
+                        case "completed": return Color.mTertiary;
+                        case "stopped": return Color.mError;
+                        case "verifying": return Color.mHover;
+                        case "queued": return Color.mInfo;
+                        case "idle": return Color.mOutline;
+                        default: return Color.mOutline;
+                    }
+                }
+                pointSize: 16
+                applyUiScale: true
             }
             
-            RowLayout {
+            // Основная информация с прогресс-баром
+            ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                Layout.fillHeight: true
+                spacing: 4
                 
-                NText {
-                    text: torrentRoot.torrentPercent + "%"
-                    color: Color.mOnSurfaceVariant
-                    font.pointSize: Style.fontSizeXS
-                    font.weight: Font.Bold
-                    Layout.preferredWidth: 40
+                // Название и процент в одной строке
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    
+                    NText {
+                        Layout.fillWidth: true
+                        text: torrentRoot.torrentName
+                        color: Color.mOnSurface
+                        font.pointSize: Style.fontSizeS
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                    }
+                    
+                    NText {
+                        text: torrentRoot.torrentPercent + "%"
+                        color: Color.mOnSurfaceVariant
+                        font.pointSize: Style.fontSizeXS
+                        font.weight: Font.Bold
+                    }
                 }
                 
+                // Прогресс бар
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 6
-                    radius: 3
+                    height: 4
+                    radius: 2
                     color: Color.mSurfaceVariant
                     
                     Rectangle {
-                        id: progressBar
                         width: parent.width * (torrentRoot.torrentPercent / 100)
                         height: parent.height
-                        radius: 3
-                        color: parent.parent.parent.children[0].color
+                        radius: 2
+                        color: {
+                            switch(torrentRoot.torrentStatus) {
+                                case "downloading": return Color.mPrimary;
+                                case "seeding": return Color.mSecondary;
+                                case "completed": return Color.mTertiary;
+                                case "stopped": return Color.mError;
+                                case "verifying": return Color.mHover;
+                                case "queued": return Color.mInfo;
+                                case "idle": return Color.mOutline;
+                                default: return Color.mOutline;
+                            }
+                        }
                         
                         Behavior on width {
                             NumberAnimation {
@@ -213,30 +263,7 @@ Item {
                     }
                 }
                 
-                NIcon {
-                    icon: {
-                        if (torrentRoot.torrentStatus === "downloading") return "player-play";
-                        if (torrentRoot.torrentStatus === "stopped") return "player-pause";
-                        if (torrentRoot.torrentStatus === "completed") return "check";
-                        if (torrentRoot.torrentStatus === "seeding") return "upload";
-                        if (torrentRoot.torrentStatus === "verifying") return "shield-check";
-                        if (torrentRoot.torrentStatus === "queued") return "clock";
-                        if (torrentRoot.torrentStatus === "idle") return "clock";
-                        return "help-circle";
-                    }
-                    color: parent.parent.parent.children[0].color
-                    pointSize: 16
-                    applyUiScale: true
-                    Layout.preferredWidth: 24
-                    Layout.alignment: Qt.AlignVCenter
-                }
-            }
-            
-            RowLayout {
-                Layout.fillWidth: true
-                
-                Item { Layout.fillWidth: true }
-                
+                // Статус под прогресс-баром
                 NText {
                     text: {
                         var statusText = "";
@@ -254,7 +281,6 @@ Item {
                     }
                     color: Color.mOnSurfaceVariant
                     font.pointSize: Style.fontSizeXS
-                    font.weight: Font.Medium
                 }
             }
         }
@@ -298,17 +324,19 @@ Item {
             spacing: Style.marginM
             
             RowLayout {
+                id: headerLayout
                 Layout.fillWidth: true
+                Layout.preferredHeight: 40
                 spacing: Style.marginM
                 
                 Rectangle {
                     id: daemonButton
-                    width: 48
-                    height: 48
+                    width: 36
+                    height: 36
                     radius: 8
                     color: daemonButtonMouseArea.containsMouse ? 
-                        (daemonRunning ? Qt.darker(Color.mError, 1.2) : Qt.darker(Color.mHover, 1.2)) : 
-                        Color.mSurfaceVariant
+                        (daemonRunning ? Color.mError : 
+                        isLoading ? Color.mHover : Qt.darker(Color.mHover, 1.2)) : Color.mOutline
                     
                     Behavior on color {
                         ColorAnimation {
@@ -317,11 +345,13 @@ Item {
                     }
                     
                     NIcon {
+                        id: daemonIcon
                         anchors.centerIn: parent
-                        icon: daemonRunning ? "player-stop" : "player-play"
+                        icon: isLoading ? "loader" :  "power"
                         color: daemonButtonMouseArea.containsMouse ? 
                             Color.mOnHover : 
-                            (daemonRunning ? Color.mError : Color.mHover)
+                            (isLoading ? Color.mHover : 
+                            daemonRunning ? Color.mError : Color.mHover)
                         pointSize: 24
                         applyUiScale: true
                         
@@ -332,11 +362,31 @@ Item {
                         }
                     }
                     
+                    RotationAnimator {
+                        id: rotationAnimator
+                        target: daemonIcon
+                        from: 0
+                        to: 360
+                        duration: 1000
+                        loops: Animation.Infinite
+                        running: isLoading
+                    }
+                    
+                    Connections {
+                        target: root
+                        function onIsLoadingChanged() {
+                            if (!root.isLoading) {
+                                daemonIcon.rotation = 0;
+                            }
+                        }
+                    }
+                    
                     MouseArea {
                         id: daemonButtonMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        enabled: !isLoading
                         
                         onClicked: {
                             if (pluginApi?.mainInstance) {
@@ -372,8 +422,8 @@ Item {
                 
                 Rectangle {
                     id: addButton
-                    width: 48
-                    height: 48
+                    width: 36
+                    height: 36
                     radius: 8
                     color: addButtonMouseArea.containsMouse ? Color.mHover : Color.mSurfaceVariant
                     visible: daemonRunning && !root.addTorrentMode
@@ -413,11 +463,14 @@ Item {
             
             NDivider {
                 Layout.fillWidth: true
+                visible: daemonRunning
             }
             
             Item {
+                id: contentArea
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                visible: daemonRunning
                 
                 StackLayout {
                     id: mainStack
@@ -430,28 +483,6 @@ Item {
                         ColumnLayout {
                             anchors.centerIn: parent
                             spacing: Style.marginM
-                            visible: !daemonRunning && !isLoading
-                            
-                            NIcon {
-                                Layout.alignment: Qt.AlignHCenter
-                                icon: "power"
-                                color: Color.mError
-                                pointSize: 64
-                                applyUiScale: true
-                            }
-                            
-                            NText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: pluginApi?.tr("notActive")
-                                color: Color.mError
-                                font.pointSize: Style.fontSizeM
-                                font.weight: Font.Bold
-                            }
-                        }
-                        
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: Style.marginL
                             visible: isLoading && (!torrentModel || torrentModel.count === 0)
                             
                             NIcon {
@@ -492,10 +523,11 @@ Item {
                         }
                         
                         NListView {
+                            id: torrentsListView
                             anchors.fill: parent
                             visible: daemonRunning && torrentModel && torrentModel.count > 0
                             model: torrentModel
-                            spacing: Style.marginS
+                            spacing: 0 
                             
                             delegate: TorrentItem {
                                 width: ListView.view.width
@@ -503,6 +535,7 @@ Item {
                                 torrentName: model.name
                                 torrentPercent: model.percent
                                 torrentStatus: model.status
+                                itemIndex: index 
                             }
                         }
                     }
@@ -518,43 +551,15 @@ Item {
                                 width: addTorrentTab.width
                                 spacing: Style.marginM
                                 
-                                Item {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 40
-                                    
-                                    Row {
-                                        anchors.centerIn: parent
-                                        spacing: Style.marginS
-                                        
-                                        NIcon {
-                                            icon: "download"
-                                            color: Color.mPrimary
-                                            pointSize: Style.fontSizeL
-                                        }
-                                        
-                                        NText {
-                                            text: pluginApi?.tr("addTorrentTitle")
-                                            color: Color.mOnSurface
-                                            font.pointSize: Style.fontSizeL
-                                            font.weight: Font.Bold
-                                        }
-                                    }
-                                }
-                                
-                                NDivider {
-                                    Layout.fillWidth: true
-                                }
-                                
                                 NText {
                                     text: pluginApi?.tr("enterMagnetLink")
                                     color: Color.mOnSurfaceVariant
                                     font.pointSize: Style.fontSizeS
-                                    Layout.topMargin: Style.marginS
                                 }
                                 
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 80
+                                    Layout.preferredHeight: 56
                                     radius: Style.radiusS
                                     color: Color.mSurfaceVariant
                                     border.width: Style.borderS
@@ -581,6 +586,7 @@ Item {
                                 
                                 RowLayout {
                                     Layout.fillWidth: true
+                                    Layout.preferredHeight: 20
                                     spacing: Style.marginM
                                     
                                     Rectangle {
@@ -603,52 +609,12 @@ Item {
                                     }
                                 }
                                 
-                                Rectangle {
+                                Loader {
+                                    id: fileInputLoader
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 60
-                                    radius: Style.radiusM
-                                    color: root.torrentFilePath ? Color.mSurface : Color.mSurfaceVariant
-                                    border.width: Style.borderS
-                                    border.color: root.torrentFilePath ? Color.mSecondary : Color.mOutline
-                                    visible: root.torrentFilePath
+                                    Layout.preferredHeight: 40
                                     
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: Style.marginM
-                                        spacing: Style.marginM
-                                        
-                                        NIcon {
-                                            icon: "check"
-                                            color: Color.mSecondary
-                                            pointSize: 20
-                                            applyUiScale: true
-                                        }
-                                        
-                                        NText {
-                                            text: root.torrentFilePath.split('/').pop()
-                                            color: Color.mOnSurfaceVariant
-                                            font.pointSize: Style.fontSizeS
-                                            elide: Text.ElideMiddle
-                                            Layout.fillWidth: true
-                                        }
-                                        
-                                        NIconButton {
-                                            icon: "x"
-                                            tooltipText: pluginApi?.tr("clear")
-                                            onClicked: {
-                                                root.torrentFilePath = "";
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                NButton {
-                                    Layout.fillWidth: true
-                                    text: root.torrentFilePath ? (pluginApi?.tr("changeFile")) : (pluginApi?.tr("selectFile"))
-                                    icon: "folder"
-                                    onClicked: {
-                                        torrentFilePicker.openFilePicker();
-                                    }
+                                    sourceComponent: root.torrentFilePath ? fileSelectedComponent : selectFileComponent
                                 }
                                 
                                 NFilePicker {
@@ -674,6 +640,7 @@ Item {
                                 
                                 RowLayout {
                                     Layout.fillWidth: true
+                                    Layout.preferredHeight: 40
                                     spacing: Style.marginM
                                     Layout.topMargin: Style.marginL
                                     
@@ -707,6 +674,72 @@ Item {
                                             root.addTorrentMode = false;
                                             root.magnetLink = "";
                                             root.torrentFilePath = "";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Component {
+                            id: selectFileComponent
+                            NButton {
+                                height: parent.height
+                                text: pluginApi?.tr("selectFile")
+                                icon: "folder"
+                                onClicked: {
+                                    torrentFilePicker.openFilePicker();
+                                }
+                            }
+                        }
+                        
+                        // Компонент для отображения выбранного файла
+                        Component {
+                            id: fileSelectedComponent
+                            Rectangle {
+                                height: parent.height
+                                radius: 8
+                                color: Color.mSurface
+                                border.width: Style.borderS
+                                border.color: Color.mSecondary
+                                
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: Style.marginS
+                                    spacing: 8
+                                    
+                                    NText {
+                                        text: root.torrentFilePath.split('/').pop()
+                                        color: Color.mOnSurfaceVariant
+                                        font.pointSize: Style.fontSizeS
+                                        elide: Text.ElideMiddle
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+                                    
+                                    Rectangle {
+                                        Layout.preferredWidth: 24
+                                        Layout.preferredHeight: 24
+                                        radius: width / 2
+                                        color: clearButtonMouseArea.containsMouse ? Color.mHover : Color.mOutline
+                                        Layout.alignment: Qt.AlignVCenter
+                                        
+                                        NIcon {
+                                            anchors.centerIn: parent
+                                            icon: "x"
+                                            color: Color.mError
+                                            pointSize: 12
+                                            applyUiScale: true
+                                        }
+                                        
+                                        MouseArea {
+                                            id: clearButtonMouseArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            
+                                            onClicked: {
+                                                root.torrentFilePath = "";
+                                            }
                                         }
                                     }
                                 }

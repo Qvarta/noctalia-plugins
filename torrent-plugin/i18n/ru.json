@@ -2,7 +2,7 @@
   "tooltipLabel": "Торренты",
   "notActive": "transmission-daemon не запущен",
   "Activate" : "transmission-daemon запускается",
-  "stopped": "остановлен",
+  "stopped": "Остановлен",
   "downloading": "Загрузка...",
   "active": "активных",
   "noTorrents": "Нет активных торрентов",

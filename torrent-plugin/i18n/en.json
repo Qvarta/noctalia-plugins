@@ -2,7 +2,7 @@
   "tooltipLabel": "Torrents",
   "notActive": "transmission-daemon is not running",
   "Activate": "transmission-daemon is starting",
-  "stopped": "stopped",
+  "stopped": "Stopped",
   "downloading": "Downloading...",
   "active": "active",
   "noTorrents": "No active torrents",

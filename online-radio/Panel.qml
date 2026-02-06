@@ -9,7 +9,7 @@ Item {
     property var pluginApi: null
     
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 280 * Style.uiScaleRatio
+    property real contentPreferredWidth: 260 * Style.uiScaleRatio
     property real contentPreferredHeight: 400 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
@@ -89,19 +89,16 @@ Item {
                             Layout.fillWidth: true
                         }
                     }
-
+                    
                     Rectangle {
-                        width: 40
-                        height: 40
-                        radius: 20
-                        color: stopButton.containsPress ? Qt.darker(Color.mPrimary, 1.2) : 
-                              stopButton.containsMouse ? Qt.darker(Color.mPrimary, 1.1) : 
-                              Color.mPrimary
+                        width: 36
+                        height: 36
+                        color: "transparent"
 
                         NIcon {
                             anchors.centerIn: parent
                             icon: "stop"
-                            color: Color.mOnPrimary
+                            color: stopButton.containsMouse ? Qt.darker(Color.mPrimary, 1.6) : Color.mPrimary
                             pointSize: 16
                         }
 
@@ -146,6 +143,10 @@ Item {
                     }
 
                     delegate: Rectangle {
+                        property string stationName: modelData.name
+                        property string stationUrl: modelData.url
+                        readonly property bool isPlaying: root.isStationPlaying(stationName)
+
                         id: stationButton
                         width: listView.width
                         height: 56
@@ -162,11 +163,8 @@ Item {
                         }
                         radius: Style.radiusS
                         border.width: Style.borderL
-                        border.color: mouseArea.containsMouse ? Color.mOutline : Color.mSurface
+                        border.color: isPlaying ? Color.mOutline : Color.mSurface
 
-                        property string stationName: modelData.name
-                        property string stationUrl: modelData.url
-                        readonly property bool isPlaying: root.isStationPlaying(stationName)
 
                         RowLayout {
                             anchors.fill: parent
@@ -174,18 +172,18 @@ Item {
                             spacing: Style.marginM
 
                             Rectangle {
-                                width: 32
-                                height: 32
-                                radius: 16
+                                width: 30
+                                height: 30
+                                radius: 20
                                 color: stationButton.isPlaying ? Color.mPrimary : Color.mSurface
                                 border.width: Style.borderS
                                 border.color: stationButton.isPlaying ? Color.mPrimary : Color.mOutline
                                 
                                 NIcon {
                                     anchors.centerIn: parent
-                                    icon: stationButton.isPlaying ? "player-play-filled" : "radio"
-                                    color: stationButton.isPlaying ? Color.mOnPrimary : Color.mPrimary
-                                    pointSize: 16
+                                    icon: stationButton.isPlaying ? "volume" : "radio"
+                                    color: stationButton.isPlaying ? Color.mOnPrimary : Color.mOnSurface
+                                    pointSize:  stationButton.isPlaying ? 16 : 18
                                 }
                             }
 
@@ -200,14 +198,15 @@ Item {
                                         return Color.mOnSurface;
                                     }
                                 }
-                                font.pointSize: stationButton.isPlaying ? Style.fontSizeL : Style.fontSizeS
+                                font.pointSize: stationButton.isPlaying ? Style.fontSizeM : Style.fontSizeS
                                 elide: Text.ElideRight
+                                font.weight: stationButton.isPlaying ? Font.Bold : Font.Normal
                                 Layout.fillWidth: true
                             }
 
                             NIcon {
-                                visible: mouseArea.containsMouse
-                                icon: stationButton.isPlaying ? "player-stop" : "player-play"
+                                visible: mouseArea.containsMouse || stationButton.isPlaying 
+                                icon: stationButton.isPlaying ? "player-stop-filled" : "player-play-filled"
                                 color: stationButton.isPlaying ? Color.mPrimary : Color.mOnHover
                                 pointSize: 16
                             }
