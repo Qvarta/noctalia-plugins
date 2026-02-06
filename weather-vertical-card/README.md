@@ -1,7 +1,8 @@
 
 # Weather Vertical для Control Center
 
-<img width="429" height="334" alt="preview" src="https://github.com/user-attachments/assets/330a39c5-3909-445f-9c38-05fe6e42ff38" />
+<img width="431" height="350" alt="preview" src="https://github.com/user-attachments/assets/5436a280-ba70-4d6c-b078-a963b9b89327" />
+
 
 ## Установка 
 
