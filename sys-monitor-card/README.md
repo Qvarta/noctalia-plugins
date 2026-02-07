@@ -15,13 +15,7 @@
 
 - Внести изменения в ControlCenterPanel.qml:
 
-    - Добавить новую константу для высоты вашего виджета
-    ```
-    readonly property int sysMonitorHeight: Math.round(120 * Style.uiScaleRatio)
-
-    ```
-
-    - Добавить новый Component с вашим виджетом
+  - Добавить новый Component с вашим виджетом
     ```
     Component {
         id: sysMonitorCard
@@ -30,6 +24,11 @@
 
     ```
 
+    - Добавить новую константу для высоты вашего виджета
+    ```
+    readonly property int sysMonitorHeight: Math.round(120 * Style.uiScaleRatio)
+
+    ```
     - Обновить preferredHeight для учета высоты вашего виджета
     ```
         preferredHeight: {
@@ -42,7 +41,6 @@
     ```
 
     - Добавить новый элемент в Repeater
-
     ```
     Layout.preferredHeight: 
         ...
@@ -51,7 +49,7 @@
         ...
 
     ```
-    и
+            и
   
     ```
         sourceComponent: {
@@ -61,7 +59,6 @@
             ...
 
     ```
-
     - Зарегистрировать в ControlCenterTab.qml:
     ```
         ...
