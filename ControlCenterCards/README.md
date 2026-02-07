@@ -50,10 +50,7 @@
                 return sysMonitorHeight
         ...
 
-    ```
-            и
-  
-    ```
+
         sourceComponent: {
             ...
                 case "sysmonitor-card":
