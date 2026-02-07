@@ -1,6 +1,6 @@
 # THIS PLUGIN IS NOT MINE 
 
-<img width="502" height="602" alt="preview2" src="https://github.com/user-attachments/assets/ad8c0609-decf-426f-87c4-2a7e3be8f5ee" />
+<img width="251" height="301" alt="preview2" src="https://github.com/user-attachments/assets/d208bfec-369c-4d41-bc3e-85b9a102a082" />
 
 - author: blacku https://github.com/noctalia-dev/noctalia-plugins/tree/main/hyprland-cheatsheet
 - Unnecessary code has been removed.
