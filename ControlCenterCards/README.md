@@ -51,11 +51,11 @@
         ...
 
 
-        sourceComponent: {
-            ...
-                case "sysmonitor-card":
-                  return sysMonitorCard;
-            ...
+    sourceComponent: {
+      ...
+          case "sysmonitor-card":
+          return sysMonitorCard;
+      ...
 
     ```
     - Зарегистрировать в ControlCenterTab.qml:
