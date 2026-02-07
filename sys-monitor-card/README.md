@@ -44,10 +44,21 @@
     - Добавить новый элемент в Repeater
 
     ```
+    Layout.preferredHeight: 
         ...
             case "sysmonitor-card": 
                 return sysMonitorHeight
         ...
+
+    ```
+    и
+  
+    ```
+        sourceComponent: {
+            ...
+                case "sysmonitor-card":
+                  return sysMonitorCard;
+            ...
 
     ```
 
