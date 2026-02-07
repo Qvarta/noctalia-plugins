@@ -46,15 +46,15 @@
     ```
     Layout.preferredHeight: 
         ...
-            case "sysmonitor-card": 
-                return sysMonitorHeight
+          case "sysmonitor-card": 
+            return sysMonitorHeight
         ...
 
 
     sourceComponent: {
       ...
           case "sysmonitor-card":
-          return sysMonitorCard;
+            return sysMonitorCard;
       ...
 
     ```
