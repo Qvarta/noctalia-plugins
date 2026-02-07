@@ -2,6 +2,9 @@
 
 <img width="428" height="207" alt="preview" src="https://github.com/user-attachments/assets/b4d4971b-64ba-4b04-a8f5-b285cd4bc59f" />
 
+# Weather Vertical для Control Center
+
+
 ## Установка 
 
 - Запустить install.sh
