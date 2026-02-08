@@ -153,9 +153,14 @@ Item {
                                             onExited: function(killExitCode) {
                                                 root.daemonRunning = false;
                                                 root.torrentModel.clear();
-                                                root.errorMessage = "Демон остановлен";
+                                                root.errorMessage = "";
                                                 refreshTimer.stop();
                                                 root.isLoading = false;
+                                                
+                                                // Закрываем панель, если она открыта
+                                                if (pluginApi) {
+                                                    pluginApi.closePanel();
+                                                }
                                             }
                                         }
                                     \`, checkProc);
@@ -163,9 +168,14 @@ Item {
                                     // Процесс уже завершен
                                     root.daemonRunning = false;
                                     root.torrentModel.clear();
-                                    root.errorMessage = "Демон остановлен";
+                                    root.errorMessage = "";
                                     refreshTimer.stop();
                                     root.isLoading = false;
+                                    
+                                    // Закрываем панель, если она открыта
+                                    if (pluginApi) {
+                                        pluginApi.closePanel();
+                                    }
                                 }
                             }
                         }

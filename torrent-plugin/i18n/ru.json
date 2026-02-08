@@ -4,7 +4,7 @@
   "Activate" : "transmission-daemon запускается",
   "stopped": "Остановлен",
   "downloading": "Загрузка...",
-  "active": "активных",
+  "active": "Активных",
   "noTorrents": "Нет активных торрентов",
   "statusDownloading": "Скачивается",
   "statusSeeding": "Раздача",

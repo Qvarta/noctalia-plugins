@@ -9,9 +9,8 @@ Item {
     property var pluginApi: null
     
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: daemonRunning ? 350 * Style.uiScaleRatio : 180 * Style.uiScaleRatio
+    property real contentPreferredWidth: 350 * Style.uiScaleRatio
     property real contentPreferredHeight: {
-        if (!daemonRunning) return 100 * Style.uiScaleRatio;
         if (addTorrentMode) return 310 * Style.uiScaleRatio;
         
         var headerHeight = 50; 
@@ -30,7 +29,6 @@ Item {
     property ListModel torrentModel: pluginApi?.mainInstance?.torrentModel || null
     property bool isLoading: pluginApi?.mainInstance?.isLoading || false
     property string errorMessage: pluginApi?.mainInstance?.errorMessage || ""
-    property bool daemonRunning: pluginApi?.mainInstance?.daemonRunning || false
     
     property bool addTorrentMode: false
     property string magnetLink: ""
@@ -334,9 +332,7 @@ Item {
                     width: 36
                     height: 36
                     radius: 8
-                    color: daemonButtonMouseArea.containsMouse ? 
-                        (daemonRunning ? Color.mError : 
-                        isLoading ? Color.mHover : Qt.darker(Color.mHover, 1.2)) : Color.mOutline
+                    color: daemonButtonMouseArea.containsMouse ? Color.mError : Color.mOutline
                     
                     Behavior on color {
                         ColorAnimation {
@@ -347,11 +343,8 @@ Item {
                     NIcon {
                         id: daemonIcon
                         anchors.centerIn: parent
-                        icon: isLoading ? "loader" :  "power"
-                        color: daemonButtonMouseArea.containsMouse ? 
-                            Color.mOnHover : 
-                            (isLoading ? Color.mHover : 
-                            daemonRunning ? Color.mError : Color.mHover)
+                        icon: "power"
+                        color: daemonButtonMouseArea.containsMouse ? Color.mOnHover : Color.mError
                         pointSize: 24
                         applyUiScale: true
                         
@@ -362,39 +355,15 @@ Item {
                         }
                     }
                     
-                    RotationAnimator {
-                        id: rotationAnimator
-                        target: daemonIcon
-                        from: 0
-                        to: 360
-                        duration: 1000
-                        loops: Animation.Infinite
-                        running: isLoading
-                    }
-                    
-                    Connections {
-                        target: root
-                        function onIsLoadingChanged() {
-                            if (!root.isLoading) {
-                                daemonIcon.rotation = 0;
-                            }
-                        }
-                    }
-                    
                     MouseArea {
                         id: daemonButtonMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        enabled: !isLoading
                         
                         onClicked: {
                             if (pluginApi?.mainInstance) {
-                                if (daemonRunning) {
-                                    pluginApi.mainInstance.stopDaemon();
-                                } else {
-                                    pluginApi.mainInstance.startDaemon();
-                                }
+                                pluginApi.mainInstance.stopDaemon();
                             }
                         }
                     }
@@ -406,12 +375,11 @@ Item {
                     
                     NText {
                         text: {
-                            if (!daemonRunning) return pluginApi?.tr("stopped");
-                            if (!torrentModel) return pluginApi?.tr("downloading");
                             if (errorMessage) return errorMessage;
-                            return torrentModel.count + " " + pluginApi?.tr("active");
+                            if (!torrentModel) return pluginApi?.tr("downloading");
+                            return pluginApi?.tr("active") + ": " + torrentModel.count ;
                         }
-                        color: errorMessage || !daemonRunning ? Color.mError : Color.mOnSurfaceVariant
+                        color: errorMessage ? Color.mError : Color.mOnSurfaceVariant
                         font.pointSize: Style.fontSizeM
                     }
                 }
@@ -426,7 +394,7 @@ Item {
                     height: 36
                     radius: 8
                     color: addButtonMouseArea.containsMouse ? Color.mHover : Color.mSurfaceVariant
-                    visible: daemonRunning && !root.addTorrentMode
+                    visible: !root.addTorrentMode
                     
                     Behavior on color {
                         ColorAnimation {
@@ -463,14 +431,12 @@ Item {
             
             NDivider {
                 Layout.fillWidth: true
-                visible: daemonRunning
             }
             
             Item {
                 id: contentArea
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: daemonRunning
                 
                 StackLayout {
                     id: mainStack
@@ -480,52 +446,10 @@ Item {
                     Item {
                         id: torrentsTab
                         
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: Style.marginM
-                            visible: isLoading && (!torrentModel || torrentModel.count === 0)
-                            
-                            NIcon {
-                                Layout.alignment: Qt.AlignHCenter
-                                icon: "download"
-                                color: Color.mPrimary
-                                pointSize: 48
-                                applyUiScale: true
-                            }
-                            
-                            NText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: pluginApi?.tr("Activate")
-                                color: Color.mOnSurfaceVariant
-                                font.pointSize: Style.fontSizeM
-                            }
-                        }
-                        
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: Style.marginM
-                            visible: daemonRunning && torrentModel && torrentModel.count === 0 && !isLoading
-                            
-                            NIcon {
-                                Layout.alignment: Qt.AlignHCenter
-                                icon: "download-off"
-                                color: Color.mOnSurfaceVariant
-                                pointSize: 48
-                                applyUiScale: true
-                            }
-                            
-                            NText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: pluginApi?.tr("noTorrents")
-                                color: Color.mOnSurfaceVariant
-                                font.pointSize: Style.fontSizeM
-                            }
-                        }
-                        
                         NListView {
                             id: torrentsListView
                             anchors.fill: parent
-                            visible: daemonRunning && torrentModel && torrentModel.count > 0
+                            visible: torrentModel && torrentModel.count > 0
                             model: torrentModel
                             spacing: 0 
                             
