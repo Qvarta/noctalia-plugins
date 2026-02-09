@@ -141,7 +141,7 @@ NBox {
                         LocationService.data.weather.current_weather.is_day
                         ) : ""
                     pointSize: Style.fontSizeXXXL * 3
-                    color: Qt.rgba(Color.mHover.r, Color.mHover.g, Color.mHover.b, 0.7)
+                    color: Qt.rgba(Color.mPrimary.r, Color.mPrimary.g, Color.mPrimary.b, 0.7)
                 }
                 
                 // Текущая температура
@@ -162,7 +162,7 @@ NBox {
                     }
                     pointSize: Style.fontSizeXXXL
                     font.weight: Style.fontWeightBold
-                    color: Color.mHover
+                    color: Color.mPrimary
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }
@@ -674,8 +674,8 @@ NBox {
                                 }
                                 return "";
                             }
-                            color: Color.mOnSurface
-                            pointSize: Style.fontSizeM
+                            color: Color.mPrimary
+                            pointSize: Style.fontSizeL
                         }
                         
                         // Иконка погоды 
@@ -697,7 +697,7 @@ NBox {
                                 return "";
                             }
                             pointSize: Style.fontSizeXXL
-                            color: Color.mOnSurface
+                            color: Color.mPrimary
                         }
                         
                         Item { 
@@ -728,15 +728,15 @@ NBox {
                                     }
                                     return "--°";
                                 }
-                                color: Color.mOnSurface
-                                pointSize: Style.fontSizeS
+                                color: Color.mPrimary
+                                pointSize: Style.fontSizeL
                             }
 
                             NIcon {
                             Layout.alignment: Qt.AlignVCenter
                             icon: "dots-vertical"
-                            pointSize: Style.fontSizeM
-                            color: Color.mOnSurface
+                            pointSize: Style.fontSizeS
+                            color: Color.mPrimary
                             }
                             
                             NText {
@@ -759,8 +759,8 @@ NBox {
                                     }
                                     return "--°";
                                 }
-                                color: Color.mOnSurface
-                                pointSize: Style.fontSizeS
+                                color: Color.mPrimary
+                                pointSize: Style.fontSizeM
                             }
                         }
 
