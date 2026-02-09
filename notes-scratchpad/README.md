@@ -1,6 +1,6 @@
 # THIS PLUGIN IS NOT MINE 
 
-<img width="394" height="287" alt="2026-02-09-155731_hyprshot" src="https://github.com/user-attachments/assets/c30cc496-6a7e-44dc-9f40-8aede1617ed6" />
+<img width="408" height="297" alt="2026-02-09-162117_hyprshot" src="https://github.com/user-attachments/assets/01236e9f-678d-44a7-857f-fb7d9d151401" />
 
 - author: apt-get https://github.com/noctalia-dev/noctalia-plugins/tree/main/notes-scratchpad
 - Added a Popup menu for copying/pasting.
