@@ -38,87 +38,6 @@ Item {
             spacing: Style.marginM
 
             Rectangle {
-                id: currentPlayingContainer
-                Layout.fillWidth: true
-                Layout.preferredHeight: visible ? 60 : 0
-                color: Color.mSurfaceVariant
-                radius: Style.radiusM
-                border.width: Style.borderS
-                border.color: Color.mOutline
-                
-                visible: isPlaying && pluginApi.mainInstance.currentPlayingStation !== ""
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: Style.marginM
-                    spacing: Style.marginM
-
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        radius: 18
-                        color: Color.mPrimary
-                        
-                        NIcon {
-                            anchors.centerIn: parent
-                            icon: "volume"
-                            color: Color.mOnPrimary
-                            pointSize: 16
-                        }
-                    }
-
-                    ColumnLayout {
-                        spacing: 2
-                        Layout.fillWidth: true
-                        
-                        NText {
-                            text: pluginApi?.tr("nowPlay")
-                            color: Color.mOnSurfaceVariant
-                            font.pointSize: Style.fontSizeXS
-                            font.weight: Font.Medium
-                            opacity: 0.8
-                        }
-                        
-                        NText {
-                            text: pluginApi && pluginApi.mainInstance ? 
-                                  pluginApi.mainInstance.currentPlayingStation || "" : ""
-                            color: Color.mOnSurface
-                            font.pointSize: Style.fontSizeM
-                            font.weight: Font.Bold
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                    }
-                    
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        color: "transparent"
-
-                        NIcon {
-                            anchors.centerIn: parent
-                            icon: "stop"
-                            color: stopButton.containsMouse ? Qt.darker(Color.mPrimary, 1.6) : Color.mPrimary
-                            pointSize: 16
-                        }
-
-                        MouseArea {
-                            id: stopButton
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            onClicked: {
-                                if (pluginApi && pluginApi.mainInstance) {
-                                    pluginApi.mainInstance.stopPlayback();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 color: Color.mSurfaceVariant
@@ -149,7 +68,7 @@ Item {
 
                         id: stationButton
                         width: listView.width
-                        height: 56
+                        height: 48
                         color: {
                             if (isStationPlaying(stationName)) {
                                 return Color.mSurface;
@@ -161,7 +80,7 @@ Item {
                                 return Color.mSurface;
                             }
                         }
-                        radius: Style.radiusS
+                        radius: 8
                         border.width: Style.borderL
                         border.color: isPlaying ? Color.mOutline : Color.mSurface
 
@@ -172,19 +91,33 @@ Item {
                             spacing: Style.marginM
 
                             Rectangle {
-                                width: 30
-                                height: 30
+                                width: 26
+                                height: 26
                                 radius: 20
-                                color: stationButton.isPlaying ? Color.mPrimary : Color.mSurface
+                                color: stationButton.isPlaying ? Color.mOnSurfaceVariant : Color.mSurface
                                 border.width: Style.borderS
-                                border.color: stationButton.isPlaying ? Color.mPrimary : Color.mOutline
+                                border.color: stationButton.isPlaying ? Color.mOnSurfaceVariant : Color.mOutline
                                 
                                 NIcon {
                                     anchors.centerIn: parent
-                                    icon: stationButton.isPlaying ? "volume" : "radio"
-                                    color: stationButton.isPlaying ? Color.mOnPrimary : Color.mOnSurface
-                                    pointSize:  stationButton.isPlaying ? 16 : 18
+                                    icon: isStationPlaying(modelData.name) ? "volume" : "radio"
+                                    color: isStationPlaying(modelData.name) ? Color.mOnPrimary : Color.mOnSurface
+                                    pointSize: isStationPlaying(modelData.name) ? 18 : 16
                                 }
+                                        
+                                // Индикатор воспроизведения
+                                Rectangle {
+                                    visible: isStationPlaying(modelData.name)
+                                    width: 10
+                                    height: 10
+                                    radius: 5
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    color: Color.mError
+                                    border.width: 2
+                                    border.color: Color.mSurface
+                                }
+
                             }
 
                             NText {
@@ -206,8 +139,9 @@ Item {
 
                             NIcon {
                                 visible: mouseArea.containsMouse || stationButton.isPlaying 
-                                icon: stationButton.isPlaying ? "player-stop-filled" : "player-play-filled"
-                                color: stationButton.isPlaying ? Color.mPrimary : Color.mOnHover
+                                icon: stationButton.isPlaying ? "power" : ""
+                                verticalAlignment: Image.AlignVCenter
+                                color: Color.mError
                                 pointSize: 16
                             }
                         }
@@ -271,9 +205,90 @@ Item {
                 }
             }
 
+            // Rectangle {
+            //     id: currentPlayingContainer
+            //     Layout.fillWidth: true
+            //     Layout.preferredHeight: visible ? 50 : 0
+            //     color: Color.mSurfaceVariant
+            //     radius: 8
+            //     border.width: Style.borderS
+            //     border.color: Color.mOutline
+                
+            //     visible: isPlaying && pluginApi.mainInstance.currentPlayingStation !== ""
+
+            //     RowLayout {
+            //         anchors.fill: parent
+            //         anchors.margins: Style.marginM
+            //         spacing: Style.marginM
+
+            //         Rectangle {
+            //             width: 36
+            //             height: 36
+            //             radius: 18
+            //             color: Color.mPrimary
+                        
+            //             NIcon {
+            //                 anchors.centerIn: parent
+            //                 icon: "volume"
+            //                 color: Color.mOnPrimary
+            //                 pointSize: 16
+            //             }
+            //         }
+
+            //         ColumnLayout {
+            //             spacing: 2
+            //             Layout.fillWidth: true
+                        
+            //             NText {
+            //                 text: pluginApi?.tr("nowPlay")
+            //                 color: Color.mOnSurfaceVariant
+            //                 font.pointSize: Style.fontSizeXS
+            //                 font.weight: Font.Medium
+            //                 opacity: 0.8
+            //             }
+                        
+            //             NText {
+            //                 text: pluginApi && pluginApi.mainInstance ? 
+            //                       pluginApi.mainInstance.currentPlayingStation || "" : ""
+            //                 color: Color.mOnSurface
+            //                 font.pointSize: Style.fontSizeM
+            //                 font.weight: Font.Bold
+            //                 elide: Text.ElideRight
+            //                 Layout.fillWidth: true
+            //             }
+            //         }
+                    
+            //         Rectangle {
+            //             width: 36
+            //             height: 36
+            //             color: "transparent"
+
+            //             NIcon {
+            //                 anchors.centerIn: parent
+            //                 icon: "stop"
+            //                 color: stopButton.containsMouse ? Qt.darker(Color.mPrimary, 1.6) : Color.mPrimary
+            //                 pointSize: 16
+            //             }
+
+            //             MouseArea {
+            //                 id: stopButton
+            //                 anchors.fill: parent
+            //                 hoverEnabled: true
+            //                 cursorShape: Qt.PointingHandCursor
+
+            //                 onClicked: {
+            //                     if (pluginApi && pluginApi.mainInstance) {
+            //                         pluginApi.mainInstance.stopPlayback();
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+
             RowLayout {
                 Layout.fillWidth: true
-                spacing: Style.marginXL
+                spacing: Style.marginL
                 
                 Item {
                     Layout.fillWidth: true
@@ -291,6 +306,9 @@ Item {
                     Layout.fillWidth: true
                 }
             }
+
+
         }
     }
 }
+
