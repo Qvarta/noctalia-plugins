@@ -143,7 +143,7 @@ NBox {
         
         // ЛЕВАЯ ЧАСТЬ: Текущая погода
         Item {
-            width: parent.width * 0.25
+            width: parent.width * 0.3
             height: parent.height
             
             Column {
@@ -165,24 +165,21 @@ NBox {
                 
                 // Текущая температура
                 NText {
-                    visible: weatherReady
+                    anchors.horizontalCenter: parent.horizontalCenter
                     text: {
-                        if (!weatherReady) {
-                            return "";
-                        }
+                        if (!weatherReady) return "";
                         var temp = LocationService.data.weather.current_weather.temperature;
-                        var suffix = "°";
+                        var suffix = Settings.data.location.useFahrenheit ? "°F" : "°C";
                         if (Settings.data.location.useFahrenheit) {
                             temp = LocationService.celsiusToFahrenheit(temp);
-                            suffix = "°F";
                         }
                         temp = Math.round(temp);
                         return `${temp}${suffix}`;
                     }
-                    pointSize: Style.fontSizeXXL
-                    font.weight: Style.fontWeightSemiBold
-                    color: Color.mOnSurface
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    pointSize: Style.fontSizeXXXL * 1.2
+                    font.weight: Style.fontWeightBold
+                    color: Color.mTertiary
+                    opacity: 0.8
                 }
             }
         }
@@ -196,7 +193,7 @@ NBox {
         
         // ПРАВАЯ ЧАСТЬ: Прогноз на 6 дней
         Item {
-            width: parent.width * 0.75 - Style.marginL
+            width: parent.width * 0.7 - Style.marginL
             height: parent.height
             
             // Список прогноза
@@ -312,9 +309,8 @@ NBox {
                                     font.pointSize: Style.fontSizeM
                                     color: Color.mOnSurface
                                 }
-
+                                
                                 Row {
-                                    
                                     Text {
                                         text: {
                                             try {
@@ -633,7 +629,6 @@ NBox {
                         
                         onExited: {
                             dayBackground.color = index % 2 === 0 ?  Qt.rgba(Color.mHover.r, Color.mHover.g, Color.mHover.b, 0.2) : Qt.rgba(Color.mHover.r, Color.mHover.g, Color.mHover.b, 0.1) 
-
                             dayPopup.close();
                         }
                     }
@@ -696,11 +691,14 @@ NBox {
                             Layout.fillWidth: true
                         }
                         
-                        // Температуры
-                        Row {
+                        // Температуры 
+                        RowLayout {
                             spacing: Style.marginXS
                             
                             NText {
+                                Layout.preferredWidth: 50 * Style.uiScaleRatio
+                                Layout.alignment: Qt.AlignVCenter
+                                horizontalAlignment: Text.AlignRight
                                 text: {
                                     if (!weatherReady) return "--°";
                                     
@@ -725,14 +723,18 @@ NBox {
                             }
 
                             NIcon {
+                                Layout.preferredWidth: 16 * Style.uiScaleRatio
+                                Layout.alignment: Qt.AlignVCenter
                                 icon: "dots-vertical"
                                 pointSize: Style.fontSizeS
                                 color: Color.mPrimary
-                                verticalAlignment: Image.AlignVCenter
-                                height: parent.height
+                                horizontalAlignment: Image.AlignHCenter
                             }
                             
                             NText {
+                                Layout.preferredWidth: 50 * Style.uiScaleRatio
+                                Layout.alignment: Qt.AlignVCenter
+                                horizontalAlignment: Text.AlignLeft
                                 text: {
                                     if (!weatherReady) return "--°";
                                     
