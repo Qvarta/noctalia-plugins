@@ -64,6 +64,7 @@ Item {
                     delegate: Rectangle {
                         property string stationName: modelData.name
                         property string stationUrl: modelData.url
+                        property int stationIndex: index + 1
                         readonly property bool isPlaying: root.isStationPlaying(stationName)
 
                         id: stationButton
@@ -98,25 +99,42 @@ Item {
                                 border.width: Style.borderS
                                 border.color: stationButton.isPlaying ? Color.mOnSurfaceVariant : Color.mOutline
                                 
-                                NIcon {
+                                // Иконка 
+                                Loader {
                                     anchors.centerIn: parent
-                                    icon: isStationPlaying(modelData.name) ? "volume" : "radio"
-                                    color: isStationPlaying(modelData.name) ? Color.mOnPrimary : Color.mOnSurface
-                                    pointSize: isStationPlaying(modelData.name) ? 18 : 16
+                                    sourceComponent: stationButton.isPlaying ? playingIcon : numberIcon
                                 }
-                                        
+                                
+                                Component {
+                                    id: playingIcon
+                                    NIcon {
+                                        icon: "player-play"
+                                        color: Color.mOnPrimary
+                                        pointSize: 18
+                                    }
+                                }
+                                
+                                Component {
+                                    id: numberIcon
+                                    NIcon {
+                                        icon: "number-" + stationIndex + "-small"
+                                        color: Color.mHover
+                                        pointSize: 22
+                                    }
+                                }
+                                
                                 // Индикатор воспроизведения
-                                Rectangle {
-                                    visible: isStationPlaying(modelData.name)
-                                    width: 10
-                                    height: 10
-                                    radius: 5
-                                    anchors.right: parent.right
-                                    anchors.bottom: parent.bottom
-                                    color: Color.mError
-                                    border.width: 2
-                                    border.color: Color.mSurface
-                                }
+                                // Rectangle {
+                                //     visible: isStationPlaying(modelData.name)
+                                //     width: 10
+                                //     height: 10
+                                //     radius: 5
+                                //     anchors.right: parent.right
+                                //     anchors.bottom: parent.bottom
+                                //     color: Color.mError
+                                //     border.width: 2
+                                //     border.color: Color.mSurface
+                                // }
 
                             }
 
@@ -205,86 +223,86 @@ Item {
                 }
             }
 
-            // Rectangle {
-            //     id: currentPlayingContainer
-            //     Layout.fillWidth: true
-            //     Layout.preferredHeight: visible ? 50 : 0
-            //     color: Color.mSurfaceVariant
-            //     radius: 8
-            //     border.width: Style.borderS
-            //     border.color: Color.mOutline
+            Rectangle {
+                id: currentPlayingContainer
+                Layout.fillWidth: true
+                Layout.preferredHeight: visible ? 60 : 0
+                color: Color.mSurfaceVariant
+                radius: 8
+                border.width: Style.borderS
+                border.color: Color.mOutline
                 
-            //     visible: isPlaying && pluginApi.mainInstance.currentPlayingStation !== ""
+                visible: isPlaying && pluginApi.mainInstance.currentPlayingStation !== ""
 
-            //     RowLayout {
-            //         anchors.fill: parent
-            //         anchors.margins: Style.marginM
-            //         spacing: Style.marginM
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: Style.marginM
+                    spacing: Style.marginM
 
-            //         Rectangle {
-            //             width: 36
-            //             height: 36
-            //             radius: 18
-            //             color: Color.mPrimary
+                    Rectangle {
+                        width: 36
+                        height: 36
+                        radius: 18
+                        color: Color.mPrimary
                         
-            //             NIcon {
-            //                 anchors.centerIn: parent
-            //                 icon: "volume"
-            //                 color: Color.mOnPrimary
-            //                 pointSize: 16
-            //             }
-            //         }
+                        NIcon {
+                            anchors.centerIn: parent
+                            icon: "volume"
+                            color: Color.mOnPrimary
+                            pointSize: 16
+                        }
+                    }
 
-            //         ColumnLayout {
-            //             spacing: 2
-            //             Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        Layout.fillWidth: true
                         
-            //             NText {
-            //                 text: pluginApi?.tr("nowPlay")
-            //                 color: Color.mOnSurfaceVariant
-            //                 font.pointSize: Style.fontSizeXS
-            //                 font.weight: Font.Medium
-            //                 opacity: 0.8
-            //             }
+                        NText {
+                            text: pluginApi?.tr("nowPlay")
+                            color: Color.mOnSurfaceVariant
+                            font.pointSize: Style.fontSizeXS
+                            font.weight: Font.Medium
+                            opacity: 0.8
+                        }
                         
-            //             NText {
-            //                 text: pluginApi && pluginApi.mainInstance ? 
-            //                       pluginApi.mainInstance.currentPlayingStation || "" : ""
-            //                 color: Color.mOnSurface
-            //                 font.pointSize: Style.fontSizeM
-            //                 font.weight: Font.Bold
-            //                 elide: Text.ElideRight
-            //                 Layout.fillWidth: true
-            //             }
-            //         }
+                        NText {
+                            text: pluginApi && pluginApi.mainInstance ? 
+                                  pluginApi.mainInstance.currentPlayingStation || "" : ""
+                            color: Color.mOnSurface
+                            font.pointSize: Style.fontSizeM
+                            font.weight: Font.Bold
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                    }
                     
-            //         Rectangle {
-            //             width: 36
-            //             height: 36
-            //             color: "transparent"
+                    Rectangle {
+                        width: 36
+                        height: 36
+                        color: "transparent"
 
-            //             NIcon {
-            //                 anchors.centerIn: parent
-            //                 icon: "stop"
-            //                 color: stopButton.containsMouse ? Qt.darker(Color.mPrimary, 1.6) : Color.mPrimary
-            //                 pointSize: 16
-            //             }
+                        NIcon {
+                            anchors.centerIn: parent
+                            icon: "power"
+                            color: stopButton.containsMouse ? Qt.darker(Color.mError, 1.6) : Color.mError
+                            pointSize: 16
+                        }
 
-            //             MouseArea {
-            //                 id: stopButton
-            //                 anchors.fill: parent
-            //                 hoverEnabled: true
-            //                 cursorShape: Qt.PointingHandCursor
+                        MouseArea {
+                            id: stopButton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
 
-            //                 onClicked: {
-            //                     if (pluginApi && pluginApi.mainInstance) {
-            //                         pluginApi.mainInstance.stopPlayback();
-            //                     }
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
+                            onClicked: {
+                                if (pluginApi && pluginApi.mainInstance) {
+                                    pluginApi.mainInstance.stopPlayback();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             RowLayout {
                 Layout.fillWidth: true
@@ -311,4 +329,3 @@ Item {
         }
     }
 }
-

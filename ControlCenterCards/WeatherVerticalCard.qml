@@ -644,7 +644,7 @@ NBox {
 
                         // День недели 
                         NText {
-                            Layout.preferredWidth: 70 * Style.uiScaleRatio
+                            Layout.preferredWidth: 50 * Style.uiScaleRatio
                             Layout.alignment: Qt.AlignVCenter
                             text: {
                                 if (!weatherReady) return "";
@@ -760,7 +760,7 @@ NBox {
                         }
 
                         Item { 
-                            Layout.preferredWidth: 20
+                            Layout.fillWidth: true
                         }
                     }
                 }
