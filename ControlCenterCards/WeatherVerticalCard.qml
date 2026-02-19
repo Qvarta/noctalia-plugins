@@ -311,6 +311,15 @@ NBox {
                                 }
                                 
                                 Row {
+                                    spacing: 5
+                                    NIcon {
+                                        icon: "arrow-big-up-lines-filled"
+                                        pointSize: Style.fontSizeS
+                                        color: '#dd434a'
+                                        verticalAlignment: Image.AlignVCenter
+                                        height: parent.height
+                                    }
+
                                     Text {
                                         text: {
                                             try {
@@ -338,13 +347,13 @@ NBox {
                                     }
                                     
                                     NIcon {
-                                        icon: "dots-vertical"
+                                        icon: "arrow-big-down-lines-filled"
                                         pointSize: Style.fontSizeS
-                                        color: Color.mPrimary
+                                        color: '#1aa9ae'
                                         verticalAlignment: Image.AlignVCenter
                                         height: parent.height
                                     }
-                                    
+
                                     Text {
                                         text: {
                                             try {
@@ -433,7 +442,7 @@ NBox {
                                     NIcon {
                                         icon: "windsock"
                                         pointSize: Style.fontSizeL
-                                        color: Color.mHover
+                                        color: Color.mOnSurface
                                         verticalAlignment: Image.AlignVCenter
                                     }
                                     
@@ -722,15 +731,10 @@ NBox {
                                 pointSize: Style.fontSizeL
                             }
 
-                            NIcon {
-                                Layout.preferredWidth: 16 * Style.uiScaleRatio
-                                Layout.alignment: Qt.AlignVCenter
-                                icon: "dots-vertical"
-                                pointSize: Style.fontSizeS
-                                color: Color.mPrimary
-                                horizontalAlignment: Image.AlignHCenter
+                            Item { 
+                                Layout.fillWidth: true
                             }
-                            
+
                             NText {
                                 Layout.preferredWidth: 50 * Style.uiScaleRatio
                                 Layout.alignment: Qt.AlignVCenter

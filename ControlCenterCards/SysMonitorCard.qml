@@ -20,15 +20,15 @@ NBox {
     
     // Функции для вычисления цветов на основе значений
     function getColor(usage) {
-        if (usage < 50) return Color.mPrimary 
-        if (usage < 75) return Color.mHover  
-        return "red" 
-    }
-
+        if (usage < 30) return '#4CAF50'     // Мягкий зеленый
+        if (usage < 60) return '#93ad33'      // Салатовый  
+        if (usage < 80) return '#bd2846'      // Янтарный
+    return "#F44336"                       // Яркий красный
+}
     function getTempColor(temp) {
-        if (temp < 40) return Color.mPrimary
-        if (temp < 80) return Color.mHover
-        return "red"
+        if (temp < 40) return "#4CAF50" 
+        if (temp < 80) return '#93ad33' 
+        return '#bd2846'
     }
     
     // Компонент сегментного индикатора
