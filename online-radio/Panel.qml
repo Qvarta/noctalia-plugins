@@ -94,8 +94,8 @@ Item {
                             Rectangle {
                                 width: 26
                                 height: 26
-                                radius: 20
-                                color: stationButton.isPlaying ? Color.mOnSurfaceVariant : Color.mSurface
+                                radius: 6
+                                color: stationButton.isPlaying ? Color.mPrimary : Color.mPrimary
                                 border.width: Style.borderS
                                 border.color: stationButton.isPlaying ? Color.mOnSurfaceVariant : Color.mOutline
                                 
@@ -110,7 +110,7 @@ Item {
                                     NIcon {
                                         icon: "player-play"
                                         color: Color.mOnPrimary
-                                        pointSize: 18
+                                        pointSize: 16
                                     }
                                 }
                                 
@@ -118,7 +118,7 @@ Item {
                                     id: numberIcon
                                     NIcon {
                                         icon: "number-" + stationIndex + "-small"
-                                        color: Color.mHover
+                                        color: Color.mOnPrimary
                                         pointSize: 22
                                     }
                                 }
@@ -226,7 +226,7 @@ Item {
             Rectangle {
                 id: currentPlayingContainer
                 Layout.fillWidth: true
-                Layout.preferredHeight: visible ? 60 : 0
+                Layout.preferredHeight: visible ? 50 : 0
                 color: Color.mSurfaceVariant
                 radius: 8
                 border.width: Style.borderS
@@ -240,9 +240,9 @@ Item {
                     spacing: Style.marginM
 
                     Rectangle {
-                        width: 36
-                        height: 36
-                        radius: 18
+                        width: 30
+                        height: 30
+                        radius: 6
                         color: Color.mPrimary
                         
                         NIcon {
