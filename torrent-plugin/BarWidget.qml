@@ -26,27 +26,13 @@ Item {
         anchors.fill: parent
         radius: 20
         
-        color: {
-            if (getIsLoading() || getDaemonRunning()) {
-                return "transparent";
-            }
-            return mouseArea.containsMouse ? Color.mHover : Color.mSurfaceVariant;
-        }
+        color: getColor()
         
         NIcon {
             id: icon
             anchors.centerIn: parent
             icon: getIcon()
-            
-            color: {
-                if (getIsLoading()) {
-                    return Color.mHover;
-                }
-                if (getDaemonRunning()) {
-                    return Color.mHover;
-                }
-                return mouseArea.containsMouse ? Color.mOnHover : Color.mOnSurface;
-            }
+            color: getColor(true)
             
             pointSize: 16
             applyUiScale: true
@@ -94,8 +80,14 @@ Item {
         } else if (getDaemonRunning()) {
             return "magnet";
         } else {
-            return "alert-circle";
+            return "loader-3";
         }
+    }
+
+    function getColor(icon = false) {
+        return mouseArea.containsMouse 
+            ? (icon ? Color.mOnHover : Color.mHover)
+            : (icon ? Color.mOnSurface : Color.mSurface);
     }
     
     function handleClick() {
