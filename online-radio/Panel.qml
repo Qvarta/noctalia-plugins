@@ -17,8 +17,7 @@ Item {
                                      pluginApi.mainInstance.currentPlayingProcessState === "start"
 
     function isStationPlaying(stationName) {
-        return isPlaying && 
-               pluginApi.mainInstance.currentPlayingStation === stationName
+        return isPlaying && pluginApi.mainInstance.currentPlayingStation === stationName
     }
 
     anchors.fill: parent
@@ -66,7 +65,6 @@ Item {
                         property string stationUrl: modelData.url
                         property int stationIndex: index + 1
                         readonly property bool isPlaying: root.isStationPlaying(stationName)
-
                         id: stationButton
                         width: listView.width
                         height: 48
@@ -108,7 +106,7 @@ Item {
                                 Component {
                                     id: playingIcon
                                     NIcon {
-                                        icon: "player-play"
+                                        icon: "volume"
                                         color: Color.mOnPrimary
                                         pointSize: 16
                                     }
@@ -142,7 +140,7 @@ Item {
                                 text: modelData.name
                                 color: {
                                     if (stationButton.isPlaying) {
-                                        return Color.mOnSurface;
+                                        return Color.mSecondary;
                                     } else if (mouseArea.containsMouse) {
                                         return Color.mOnHover;
                                     } else {
@@ -151,17 +149,17 @@ Item {
                                 }
                                 font.pointSize: stationButton.isPlaying ? Style.fontSizeM : Style.fontSizeS
                                 elide: Text.ElideRight
-                                font.weight: stationButton.isPlaying ? Font.Bold : Font.Normal
+                                // font.weight: stationButton.isPlaying ? Font.Bold : Font.Normal
                                 Layout.fillWidth: true
                             }
 
-                            NIcon {
-                                visible: mouseArea.containsMouse || stationButton.isPlaying 
-                                icon: stationButton.isPlaying ? "power" : ""
-                                verticalAlignment: Image.AlignVCenter
-                                color: Color.mError
-                                pointSize: 16
-                            }
+                            // NIcon {
+                            //     visible: mouseArea.containsMouse || stationButton.isPlaying 
+                            //     icon: stationButton.isPlaying ? "power" : ""
+                            //     verticalAlignment: Image.AlignVCenter
+                            //     color: Color.mError
+                            //     pointSize: 16
+                            // }
                         }
 
                         MouseArea {
@@ -324,8 +322,6 @@ Item {
                     Layout.fillWidth: true
                 }
             }
-
-
         }
     }
 }

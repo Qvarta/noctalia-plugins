@@ -1,12 +1,16 @@
 import QtQuick
 import Quickshell.Io
 import qs.Commons
+
 Item {
     id: root
     property var pluginApi: null
     
     property string currentPlayingStation: ""
-    property string currentPlayingProcessState: "" // "start" или ""
+    property string currentPlayingProcessState: ""
+    property string currentTrack: ""
+    property string currentArtist: ""
+    property var currentProcess: null
     
     FileView {
         id: jsonFile
@@ -36,7 +40,6 @@ Item {
                         pluginApi.pluginSettings.station_count = jsonData.length;
                     }
                     
-                    // Восстанавливаем текущую станцию, если она все еще существует
                     var stationStillExists = false;
                     if (savedStation && Array.isArray(jsonData)) {
                         for (var j = 0; j < jsonData.length; j++) {
@@ -50,15 +53,17 @@ Item {
                     if (!stationStillExists) {
                         currentPlayingStation = "";
                         currentPlayingProcessState = "";
+                        currentTrack = "";
+                        currentArtist = "";
                         pluginApi.pluginSettings.currentPlayingStation = "";
                         pluginApi.pluginSettings.currentPlayingProcessState = "";
+                        pluginApi.pluginSettings.currentTrack = "";
+                        pluginApi.pluginSettings.currentArtist = "";
                     }
                     
                     pluginApi.saveSettings();
                     
-                } catch(error) {
-                    console.error("JSON parse error:", error);
-                }
+                } catch(error) {}
             }
         }
     }
@@ -67,10 +72,107 @@ Item {
         if (pluginApi && pluginApi.pluginSettings) {
             currentPlayingStation = pluginApi.pluginSettings.currentPlayingStation || "";
             currentPlayingProcessState = pluginApi.pluginSettings.currentPlayingProcessState || "";
+            currentTrack = pluginApi.pluginSettings.currentTrack || "";
+            currentArtist = pluginApi.pluginSettings.currentArtist || "";
         }
         
         if (!jsonFile.text()) {
             jsonFile.reload();
+        }
+    }
+    
+    function parseMetadata(line) {
+        var icyTitleMatch = line.match(/New Icy-Title=(.+)$/i);
+        
+        if (icyTitleMatch) {
+            var streamTitle = icyTitleMatch[1].trim();
+            parseArtistTitle(streamTitle);
+            return;
+        }
+        
+        var icyNameMatch = line.match(/Icy-Name:\s*(.+)/i);
+        if (icyNameMatch) {
+            return;
+        }
+    }
+    
+    function parseArtistTitle(text) {
+        text = text.trim();
+        
+        var separators = [" - ", " – ", " — ", ": ", " | ", " / ", " by "];
+        
+        for (var i = 0; i < separators.length; i++) {
+            var sep = separators[i];
+            var index = text.indexOf(sep);
+            if (index > 0) {
+                currentArtist = text.substring(0, index).trim();
+                currentTrack = text.substring(index + sep.length).trim();
+                
+                if (pluginApi) {
+                    pluginApi.pluginSettings.currentArtist = currentArtist;
+                    pluginApi.pluginSettings.currentTrack = currentTrack;
+                    pluginApi.saveSettings();
+                }
+                return;
+            }
+        }
+        
+        currentArtist = "";
+        currentTrack = text;
+        
+        if (pluginApi) {
+            pluginApi.pluginSettings.currentArtist = currentArtist;
+            pluginApi.pluginSettings.currentTrack = currentTrack;
+            pluginApi.saveSettings();
+        }
+    }
+    
+    Process {
+        id: cvlcProcess
+        
+        command: {
+            if (root.currentPlayingStation && root.currentPlayingProcessState === "start") {
+                var stations = root.getStations();
+                var station = stations.find(s => s.name === root.currentPlayingStation);
+                if (station) {
+                    var cmd = "cvlc -vvv --intf dummy " + station.url.replace(/'/g, "'\"'\"'") + " 2>&1";
+                    return ["sh", "-c", cmd];
+                }
+            }
+            return ["true"];
+        }
+        
+        running: {
+            var shouldRun = root.currentPlayingStation !== "" && root.currentPlayingProcessState === "start";
+            return shouldRun;
+        }
+        
+        stdout: SplitParser {
+            onRead: data => {
+                root.parseMetadata(data);
+            }
+        }
+        
+        stderr: SplitParser {
+            onRead: data => {
+                root.parseMetadata(data);
+            }
+        }
+        
+        onExited: (exitCode, exitStatus) => {
+            if (root.currentPlayingStation !== "") {
+                root.stopPlayback();
+            }
+        }
+        
+        onStarted: {
+            currentTrack = "";
+            currentArtist = "";
+            if (pluginApi) {
+                pluginApi.pluginSettings.currentTrack = "";
+                pluginApi.pluginSettings.currentArtist = "";
+                pluginApi.saveSettings();
+            }
         }
     }
     
@@ -79,23 +181,18 @@ Item {
         
         currentPlayingStation = stationName;
         currentPlayingProcessState = "start";
+        currentTrack = "";
+        currentArtist = "";
         
         if (pluginApi) {
             pluginApi.pluginSettings.currentPlayingStation = stationName;
             pluginApi.pluginSettings.currentPlayingProcessState = "start";
+            pluginApi.pluginSettings.currentTrack = "";
+            pluginApi.pluginSettings.currentArtist = "";
             pluginApi.saveSettings();
         }
         
-        var process = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
-        process.command = ["sh", "-c", "cvlc --no-video --play-and-exit '" + stationUrl.replace(/'/g, "'\"'\"'") + "'"];
-        
-        process.exited.connect(function() {
-            if (root.currentPlayingStation === stationName) {
-                root.stopPlayback();
-            }
-            process.destroy();
-        });
-        process.startDetached();
+        cvlcProcess.running = true;
     }
     
     function stopPlayback() {
@@ -150,4 +247,3 @@ Item {
         return stations;
     }
 }
-

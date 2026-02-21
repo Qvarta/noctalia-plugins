@@ -1,5 +1,6 @@
 {
   "iconLabel": "Icon Selection",
+  "title": "Radio",
   "iconDescription": "Select icon for the widget",
   "changeIconButton": "Change Icon",
   "fileTitle": "Load from file",
