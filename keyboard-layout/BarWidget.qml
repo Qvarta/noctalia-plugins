@@ -6,14 +6,14 @@ import qs.Widgets
 import qs.Services.UI
 import qs.Services.Keyboard
 
-Rectangle {
+Item {
     id: root
 
     property var pluginApi: null
     property string currentLayout: KeyboardLayoutService ? KeyboardLayoutService.currentLayout : "??"
-    property bool capsLockOn: LockKeysService ? LockKeysService.capsLockOn : false
-    property bool flag: pluginApi?.pluginSettings.showIcon
-    property bool text: pluginApi?.pluginSettings.showText 
+    property bool flag: pluginApi?.pluginSettings.showIcon 
+    property bool text: pluginApi?.pluginSettings.showText
+    property string componentId: "bar-layout:" + Date.now()
     
     implicitWidth: row.implicitWidth + Style.marginM * 2
     implicitHeight: Style.barHeight - 6
@@ -37,42 +37,49 @@ Rectangle {
         return "🇦🇧";
     }
 
-    color: capsLockOn ? Color.mHover : Color.mSurfaceVariant
-    radius: 4
-
-    RowLayout {
-        id: row
-        anchors.centerIn: parent
-        spacing: Style.marginS
-
-        NText {
-            id: flagText
-            visible: root.flag 
-            text: getFlagEmoji(displayText.toLowerCase())
-            color: capsLockOn ? Color.mOnHover : Color.mOnSurface
-            pointSize: Style.fontSizeXL
+    Rectangle {
+        id: backgroundRect
+        anchors {
+            fill: parent
+            margins: 4
         }
+        color: (LockKeysService && LockKeysService.capsLockOn) 
+               ? Qt.rgba(Color.mHover.r, Color.mHover.g, Color.mHover.b, 0.5) 
+               : Color.mSurfaceVariant
+        radius: 4
 
-        NText {
-            id: text
-            visible: root.text
-            text: displayText
-            color: capsLockOn ? Color.mOnHover : Color.mOnSurface
-            pointSize: Style.fontSizeS
+        RowLayout {
+            id: row
+            anchors.centerIn: parent
+            spacing: Style.marginS
+
+            NText {
+                id: flagText
+                visible: root.flag 
+                text: getFlagEmoji(displayText.toLowerCase())
+                color: (LockKeysService && LockKeysService.capsLockOn) ? Color.mOnHover : Color.mOnSurface
+                pointSize: Style.fontSizeXL
+            }
+
+            NText {
+                id: text
+                visible: root.text
+                text: displayText
+                color: (LockKeysService && LockKeysService.capsLockOn) ? Color.mOnHover : Color.mOnSurface
+                pointSize: Style.fontSizeS
+            }
         }
     }
 
-    Connections {
-      target: KeyboardLayoutService
-      function onCurrentLayoutChanged() {
-        Logger.d("KeyboardLayoutWidget", displayText)
-      }
+    Component.onCompleted: {
+        if (LockKeysService) {
+            LockKeysService.registerComponent(root.componentId);
+        }
     }
     
-    Connections {
-      target: LockKeysService
-      function onCapsLockChanged(active) {
-        Logger.d("KeyboardLayoutWidget", capsLockOn)
-      }
+    Component.onDestruction: {
+        if (LockKeysService) {
+            LockKeysService.unregisterComponent(root.componentId);
+        }
     }
 }
