@@ -66,7 +66,7 @@
       "tags": [],
       "lastUpdated": "2026-01-24T16:11:02+03:00"
     },
-        {
+    {
       "id": "notes-scratchpad",
       "name": "Notes Scratchpad",
       "version": "1.1.1",
@@ -75,6 +75,16 @@
       "license": "MIT",
       "tags": [],
       "lastUpdated": "2026-01-24T16:11:02+03:00"
+    },
+    {
+      "id": "media-lyric",
+      "name": "Media Lyric",
+      "version": "0.0.1",
+      "author": "Qvarta",
+      "description": "Widget for getting song lyrics",
+      "license": "MIT",
+      "tags": [],
+      "lastUpdated": "2026-02-24T16:11:02+03:00"
     }
   ]
 }

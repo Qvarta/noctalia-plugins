@@ -1,0 +1,21 @@
+{
+  "id": "media-lyric",
+  "name": "Media Lyric",
+  "version": "0.0.1",
+  "minNoctaliaVersion": "3.6.0",
+  "author": "Qvarta",
+  "license": "MIT",
+  "description": "Show Lyric",
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "panel": "Panel.qml"
+  },
+  "dependencies": {
+    "plugins": []
+  },
+  "metadata": {
+    "defaultSettings": {
+      "parsedData": [] 
+    }
+  }
+}

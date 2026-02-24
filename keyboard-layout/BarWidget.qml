@@ -8,8 +8,9 @@ import qs.Services.Keyboard
 
 Item {
     id: root
-
     property var pluginApi: null
+    property ShellScreen screen
+
     property string currentLayout: KeyboardLayoutService ? KeyboardLayoutService.currentLayout : "??"
     property bool flag: pluginApi?.pluginSettings.showIcon 
     property bool text: pluginApi?.pluginSettings.showText
@@ -80,6 +81,47 @@ Item {
     Component.onDestruction: {
         if (LockKeysService) {
             LockKeysService.unregisterComponent(root.componentId);
+        }
+    }
+
+    MouseArea {
+        id: mouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        
+        onClicked: (mouse) => {
+          if (mouse.button === Qt.RightButton) {
+                var popupMenuWindow = PanelService.getPopupMenuWindow(screen);
+                if (popupMenuWindow) {
+                    popupMenuWindow.showContextMenu(contextMenu);
+                    contextMenu.openAtItem(root, screen);
+                }
+            }
+        }
+    }
+
+    NPopupContextMenu {
+        id: contextMenu
+
+        model: [
+            {
+                "label": I18n.tr("actions.widget-settings"),
+                "action": "widget-settings",
+                "icon": "settings"
+            },
+        ]
+
+        onTriggered: action => {
+            var popupMenuWindow = PanelService.getPopupMenuWindow(screen);
+            if (popupMenuWindow) {
+                popupMenuWindow.close();
+            }
+
+            if (action === "widget-settings") {
+                BarService.openPluginSettings(screen, pluginApi.manifest);
+            }
         }
     }
 }
