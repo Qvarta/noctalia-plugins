@@ -4,5 +4,5 @@
 
 ## Components
 
-- **Panel.qml**: Expanded panel showing list applications
+- **Panel.qml**: panel showing menu
 - **Main.qml**: Core logic
