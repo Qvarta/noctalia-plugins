@@ -1,0 +1,4 @@
+# MediaPlayerPanel with lyrics
+
+## Установка 
+
