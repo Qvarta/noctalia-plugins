@@ -319,7 +319,7 @@ Item {
                         id: appDelegate
                         width: appListView.width
                         height: itemHeight
-                        color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mPrimary : Color.mSurface
+                        color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mPrimary : Color.mSurfaceVariant
                         radius: Style.radiusS
 
                         MouseArea {

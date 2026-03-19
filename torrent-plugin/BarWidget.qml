@@ -25,16 +25,15 @@ Item {
         id: button
         anchors.fill: parent
         radius: 20
-        
-        color: getColor()
+        color: "transparent"
         
         NIcon {
             id: icon
             anchors.centerIn: parent
             icon: getIcon()
-            color: getColor(true)
+            color: getIconColor()
             
-            pointSize: 16
+            pointSize: 14
             applyUiScale: true
         }
         
@@ -52,6 +51,17 @@ Item {
                     button.rotation = 0;
                 }
             }
+        }
+        
+        PropertyAnimation {
+            id: colorAnim
+            target: icon
+            property: "color"
+            from: Color.mSecondary   
+            to: Color.mOnSecondary          
+            duration: 1200
+            loops: Animation.Infinite
+            running: getDaemonRunning() && !getIsLoading()
         }
         
         MouseArea {
@@ -78,16 +88,17 @@ Item {
         if (getIsLoading()) {
             return "loader-3";
         } else if (getDaemonRunning()) {
-            return "magnet";
+            return "playstation-circle";
         } else {
             return "loader-3";
         }
     }
-
-    function getColor(icon = false) {
-        return mouseArea.containsMouse 
-            ? (icon ? Color.mOnHover : Color.mHover)
-            : (icon ? Color.mOnSurface : Color.mSurface);
+    
+    function getIconColor() {
+        if (colorAnim.running) {
+            return colorAnim.to;
+        }
+        return mouseArea.containsMouse ? Color.mSecondary : Color.mHover;
     }
     
     function handleClick() {
