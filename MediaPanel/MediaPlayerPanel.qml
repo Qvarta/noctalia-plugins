@@ -8,7 +8,6 @@ import qs.Modules.MainScreen
 import qs.Services.Media
 import qs.Services.UI
 import qs.Widgets
-import qs.Widgets.AudioSpectrum
 
 SmartPanel {
   id: root
@@ -19,29 +18,22 @@ SmartPanel {
   function calculatePreferredHeight() {
     var baseHeight = 0;
     
-    // Заголовок (NBox)
-    baseHeight += 48; 
-    
+    // mediaBox
     if (root.showLyrics) {
-      baseHeight += 300; 
+      baseHeight += 300;
     } else {
       baseHeight += 60;
     }
     
-    // Область текста (lyricsBox)
-    if (root.showLyrics) {
+    // lyricsBox
+    if (root.showLyrics && root.shouldShowLyricsSection) {
       if (MediaService.isFetchingLyrics) {
         baseHeight += 20; 
-      } else if (MediaService.hasLyrics) {
+      } else if (root.hasValidLyrics) {
         var linesCount = Math.min(MediaService.lyricsLines.length, 10);
-        baseHeight += 40 + (linesCount * 24);
-      } else {
-        baseHeight += 20; 
+        baseHeight += 80 + (linesCount * 24);
       }
     }
-    
-    baseHeight += Style.marginL * 3; 
-    
     return baseHeight;
   }
 
@@ -72,66 +64,44 @@ SmartPanel {
   readonly property string visualizerType: (mediaMiniSettings && mediaMiniSettings.visualizerType !== undefined) ? mediaMiniSettings.visualizerType : "linear"
   readonly property bool showArtistFirst: !!(mediaMiniSettings && mediaMiniSettings.showArtistFirst !== undefined ? mediaMiniSettings.showArtistFirst : true)
   readonly property bool showAlbumArt: !!(mediaMiniSettings && mediaMiniSettings.panelShowAlbumArt !== undefined ? mediaMiniSettings.panelShowAlbumArt : true)
-  readonly property bool showVisualizer: !!(mediaMiniSettings && mediaMiniSettings.showVisualizer !== undefined ? mediaMiniSettings.showVisualizer : true)
   readonly property bool compactMode: !!(mediaMiniSettings && mediaMiniSettings.compactMode !== undefined ? mediaMiniSettings.compactMode : false)
   readonly property string scrollingMode: (mediaMiniSettings && mediaMiniSettings.scrollingMode !== undefined) ? mediaMiniSettings.scrollingMode : "hover"
   readonly property bool showLyrics: true
 
   readonly property bool isSideBySide: root.compactMode && root.showAlbumArt
 
-  readonly property bool needsCava: root.showVisualizer && root.visualizerType !== "" && root.visualizerType !== "none" && root.isPanelOpen
-
-  onNeedsCavaChanged: {
-    if (root.needsCava) {
-      CavaService.registerComponent("mediaplayerpanel");
-    } else {
-      CavaService.unregisterComponent("mediaplayerpanel");
-    }
+  readonly property bool hasValidLyrics: {
+    if (!MediaService.hasLyrics) return false;
+    if (MediaService.isFetchingLyrics) return false;
+    
+    var lyricsText = MediaService.lyricsText || "";
+    if (lyricsText.trim() === "Текст не найден для этого трека") return false;
+    if (MediaService.lyricsLines.length === 0) return false;
+    
+    return true;
   }
 
-  // Динамическая высота области с текстом
   readonly property int lyricsAreaHeight: {
-    if (MediaService.isFetchingLyrics) {
-      return 20; 
-    } else if (MediaService.hasLyrics) {
-      var displayLines = Math.min(MediaService.lyricsLines.length, 10);
-      return 40 + (displayLines * 24); 
-    } else {
-      return 20;
-    }
+    if (!root.hasValidLyrics) return 0;
+    if (!MediaService.lyricsLines || MediaService.lyricsLines.length === 0) return 0;
+    
+    var displayLines = Math.min(MediaService.lyricsLines.length, 10);
+    var height = 40 + (displayLines * 24);
+    
+    if (isNaN(height) || !isFinite(height)) return 100;
+    return height;
   }
+
+  readonly property bool shouldShowLyricsSection: root.hasValidLyrics && !MediaService.isFetchingLyrics
 
   readonly property int loadingHeight: MediaService.isFetchingLyrics ? 25 : 0
-  readonly property int typeHeight: (MediaService.hasLyrics && !MediaService.isFetchingLyrics) ? 15 : 0
-
-  Component.onCompleted: {
-    if (root.needsCava) {
-      CavaService.registerComponent("mediaplayerpanel");
-    }
-  }
-
-  Component.onDestruction: {
-    CavaService.unregisterComponent("mediaplayerpanel");
-  }
+  readonly property int typeHeight: (root.hasValidLyrics && !MediaService.isFetchingLyrics) ? 15 : 0
 
   panelContent: Item {
     id: playerContent
     anchors.fill: parent
 
     readonly property real contentPreferredHeight: root.preferredHeight
-
-    property Component visualizerSource: {
-      switch (root.visualizerType) {
-      case "linear":
-        return linearComponent;
-      case "mirrored":
-        return mirroredComponent;
-      case "wave":
-        return waveComponent;
-      default:
-        return null;
-      }
-    }
 
     ColumnLayout {
       id: mainLayout
@@ -272,241 +242,244 @@ SmartPanel {
         }
       }
 
-      // Основная область
+      // Основная область 
       NBox {
         id: mediaBox
         Layout.fillWidth: true
         Layout.preferredHeight: root.showLyrics ? 200 * Style.uiScaleRatio : 110 * Style.uiScaleRatio
         radius: Style.iRadiusL
 
-        // Visualizer background for content area
-        Loader {
-          anchors.fill: parent
-          z: 0
-          active: !!(root.needsCava && !root.showAlbumArt)
-          sourceComponent: visualizerSource
-        }
-
-        // Градиентный оверлей для визуала
-        Rectangle {
-          anchors.fill: parent
-          radius: parent.radius
-          color: "transparent"
-          gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0) }
-            GradientStop { position: 0.8; color: Qt.rgba(0, 0, 0, 0.1) }
-            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.2) }
-          }
-          visible: root.needsCava && root.showAlbumArt
-        }
-
-        RowLayout {
+        ColumnLayout {
           anchors.fill: parent
           anchors.margins: Style.marginM
-          spacing: Style.marginL
+          spacing: Style.marginS
 
-          // Album Art 
-          Item {
-            id: albumArtItem
-            Layout.preferredWidth: root.compactMode ? 90 * Style.uiScaleRatio : 110 * Style.uiScaleRatio
-            Layout.preferredHeight: root.compactMode ? 90 * Style.uiScaleRatio : 110 * Style.uiScaleRatio
-            Layout.alignment: Qt.AlignVCenter
-            visible: root.showAlbumArt
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginL
 
-            NImageRounded {
-              anchors.fill: parent
-              radius: Style.iRadiusM
-              imagePath: MediaService.trackArtUrl
-              imageFillMode: Image.PreserveAspectCrop
-              fallbackIcon: "disc"
-              fallbackIconSize: Style.fontSizeXXXL * 2
-              borderWidth: 0
+            // Album Art 
+            Item {
+              id: albumArtItem
+              Layout.preferredWidth: root.compactMode ? 90 * Style.uiScaleRatio : 110 * Style.uiScaleRatio
+              Layout.preferredHeight: root.compactMode ? 90 * Style.uiScaleRatio : 110 * Style.uiScaleRatio
+              Layout.alignment: Qt.AlignVCenter
+              visible: root.showAlbumArt
 
-              // Тень для обложки
-              layer.enabled: true
-              layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowColor: Color.mHover
-                shadowBlur: 0.5
-                shadowOpacity: 0.5
-                shadowHorizontalOffset: 2
-                shadowVerticalOffset: 2
+              NImageRounded {
+                anchors.fill: parent
+                radius: Style.iRadiusM
+                imagePath: MediaService.trackArtUrl
+                imageFillMode: Image.PreserveAspectCrop
+                fallbackIcon: "disc"
+                fallbackIconSize: Style.fontSizeXXXL * 2
+                borderWidth: 0
+
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                  shadowEnabled: true
+                  shadowColor: Color.mHover
+                  shadowBlur: 0.5
+                  shadowOpacity: 0.5
+                  shadowHorizontalOffset: 2
+                  shadowVerticalOffset: 2
+                }
               }
             }
-          }
 
-          // Информация о треке и контролы
-          ColumnLayout {
-            Layout.fillWidth: true
-            Layout.alignment: Qt.AlignVCenter
-            spacing: Style.marginS
-
-            // Информация о треке
+            // Информация о треке и контролы
             ColumnLayout {
               Layout.fillWidth: true
-              spacing: 2
+              Layout.alignment: Qt.AlignVCenter
+              spacing: Style.marginS
 
-              NText {
+              // Информация о треке
+              ColumnLayout {
                 Layout.fillWidth: true
-                text: MediaService.trackTitle || "No Media"
-                pointSize: Style.fontSizeL
-                font.weight: Style.fontWeightBold
-                color: Color.mOnSurface
-                elide: Text.ElideRight
-                maximumLineCount: 1
-              }
+                spacing: 2
 
-              NText {
-                Layout.fillWidth: true
-                text: {
-                  if (MediaService.trackArtist && MediaService.trackAlbum) {
-                    return MediaService.trackArtist + " • " + MediaService.trackAlbum;
-                  } else if (MediaService.trackArtist) {
-                    return MediaService.trackArtist;
-                  } else if (MediaService.trackAlbum) {
-                    return MediaService.trackAlbum;
-                  }
-                  return "Unknown Artist";
+                NText {
+                  Layout.fillWidth: true
+                  text: MediaService.trackTitle || "No Media"
+                  pointSize: Style.fontSizeL
+                  font.weight: Style.fontWeightBold
+                  color: Color.mOnSurface
+                  elide: Text.ElideRight
+                  maximumLineCount: 1
                 }
-                pointSize: Style.fontSizeXS
-                color: Color.mOnSurfaceVariant
-                elide: Text.ElideRight
-                maximumLineCount: 1
-              }
-            }
 
-            // Прогресс бар
-            Item {
-              id: progressWrapper
-              visible: (MediaService.currentPlayer && MediaService.trackLength > 0)
-              Layout.fillWidth: true
-              Layout.preferredHeight: 32 * Style.uiScaleRatio
-
-              property real localSeekRatio: -1
-              property real lastSentSeekRatio: -1
-              property real seekEpsilon: 0.01
-              property real progressRatio: {
-                if (!MediaService.currentPlayer || MediaService.trackLength <= 0)
-                  return 0;
-                const r = MediaService.currentPosition / MediaService.trackLength;
-                if (isNaN(r) || !isFinite(r))
-                  return 0;
-                return Math.max(0, Math.min(1, r));
+                NText {
+                  Layout.fillWidth: true
+                  text: {
+                    if (MediaService.trackArtist && MediaService.trackAlbum) {
+                      return MediaService.trackArtist + " • " + MediaService.trackAlbum;
+                    } else if (MediaService.trackArtist) {
+                      return MediaService.trackArtist;
+                    } else if (MediaService.trackAlbum) {
+                      return MediaService.trackAlbum;
+                    }
+                    return "Unknown Artist";
+                  }
+                  pointSize: Style.fontSizeXS
+                  color: Color.mOnSurfaceVariant
+                  elide: Text.ElideRight
+                  maximumLineCount: 1
+                }
               }
 
-              Timer {
-                id: seekDebounce
-                interval: 75
-                repeat: false
-                onTriggered: {
-                  if (MediaService.isSeeking && progressWrapper.localSeekRatio >= 0) {
-                    const next = Math.max(0, Math.min(1, progressWrapper.localSeekRatio));
-                    if (progressWrapper.lastSentSeekRatio < 0 || Math.abs(next - progressWrapper.lastSentSeekRatio) >= progressWrapper.seekEpsilon) {
-                      MediaService.seekByRatio(next);
-                      progressWrapper.lastSentSeekRatio = next;
+              // Прогресс бар
+              Item {
+                id: progressWrapper
+                visible: (MediaService.currentPlayer && MediaService.trackLength > 0)
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32 * Style.uiScaleRatio
+
+                property real localSeekRatio: -1
+                property real lastSentSeekRatio: -1
+                property real seekEpsilon: 0.01
+                property real progressRatio: {
+                  if (!MediaService.currentPlayer || MediaService.trackLength <= 0)
+                    return 0;
+                  const r = MediaService.currentPosition / MediaService.trackLength;
+                  if (isNaN(r) || !isFinite(r))
+                    return 0;
+                  return Math.max(0, Math.min(1, r));
+                }
+
+                Timer {
+                  id: seekDebounce
+                  interval: 75
+                  repeat: false
+                  onTriggered: {
+                    if (MediaService.isSeeking && progressWrapper.localSeekRatio >= 0) {
+                      const next = Math.max(0, Math.min(1, progressWrapper.localSeekRatio));
+                      if (progressWrapper.lastSentSeekRatio < 0 || Math.abs(next - progressWrapper.lastSentSeekRatio) >= progressWrapper.seekEpsilon) {
+                        MediaService.seekByRatio(next);
+                        progressWrapper.lastSentSeekRatio = next;
+                      }
                     }
                   }
                 }
-              }
 
-              NSlider {
-                id: progressSlider
-                anchors.fill: parent
-                from: 0
-                to: 1
-                stepSize: 0
-                snapAlways: false
-                enabled: MediaService.trackLength > 0 && MediaService.canSeek
-                heightRatio: 0.3
+                NSlider {
+                  id: progressSlider
+                  anchors.fill: parent
+                  from: 0
+                  to: 1
+                  stepSize: 0
+                  snapAlways: false
+                  enabled: MediaService.trackLength > 0 && MediaService.canSeek
+                  heightRatio: 0.3
 
-                value: (!MediaService.isSeeking) ? progressWrapper.progressRatio : (progressWrapper.localSeekRatio >= 0 ? progressWrapper.localSeekRatio : 0)
+                  value: (!MediaService.isSeeking) ? progressWrapper.progressRatio : (progressWrapper.localSeekRatio >= 0 ? progressWrapper.localSeekRatio : 0)
 
-                onMoved: {
-                  progressWrapper.localSeekRatio = value;
-                  seekDebounce.restart();
-                }
-                onPressedChanged: {
-                  if (pressed) {
-                    MediaService.isSeeking = true;
+                  onMoved: {
                     progressWrapper.localSeekRatio = value;
-                    MediaService.seekByRatio(value);
-                    progressWrapper.lastSentSeekRatio = value;
-                  } else {
-                    seekDebounce.stop();
-                    MediaService.seekByRatio(value);
-                    MediaService.isSeeking = false;
-                    progressWrapper.localSeekRatio = -1;
-                    progressWrapper.lastSentSeekRatio = -1;
+                    seekDebounce.restart();
+                  }
+                  onPressedChanged: {
+                    if (pressed) {
+                      MediaService.isSeeking = true;
+                      progressWrapper.localSeekRatio = value;
+                      MediaService.seekByRatio(value);
+                      progressWrapper.lastSentSeekRatio = value;
+                    } else {
+                      seekDebounce.stop();
+                      MediaService.seekByRatio(value);
+                      MediaService.isSeeking = false;
+                      progressWrapper.localSeekRatio = -1;
+                      progressWrapper.lastSentSeekRatio = -1;
+                    }
+                  }
+                }
+
+                RowLayout {
+                  anchors.top: parent.bottom
+                  anchors.topMargin: 2
+                  width: parent.width
+                  spacing: Style.marginXS
+
+                  NText {
+                    text: MediaService.positionString || "0:00"
+                    pointSize: Style.fontSizeXS
+                    color: Color.mOnSurfaceVariant
+                  }
+
+                  Item { Layout.fillWidth: true }
+
+                  NText {
+                    text: MediaService.lengthString || "0:00"
+                    pointSize: Style.fontSizeXS
+                    color: Color.mOnSurfaceVariant
                   }
                 }
               }
 
+              // Кнопки управления
               RowLayout {
-                anchors.top: parent.bottom
-                anchors.topMargin: 2
-                width: parent.width
-                spacing: Style.marginXS
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                spacing: Style.marginM
 
-                NText {
-                  text: MediaService.positionString || "0:00"
-                  pointSize: Style.fontSizeXS
-                  color: Color.mOnSurfaceVariant
+                NIconButton {
+                  icon: "media-prev"
+                  baseSize: Style.baseWidgetSize * 0.9
+                  tooltipText: "Previous"
+                  opacity: 0.8
+                  onClicked: MediaService.previous()
                 }
 
-                Item { Layout.fillWidth: true }
+                Rectangle {
+                  implicitWidth: Style.baseWidgetSize * 1.4
+                  implicitHeight: Style.baseWidgetSize * 1.4
+                  radius: Style.iRadiusCircle
+                  color: Color.mPrimary
 
-                NText {
-                  text: MediaService.lengthString || "0:00"
-                  pointSize: Style.fontSizeXS
-                  color: Color.mOnSurfaceVariant
+                  NIcon {
+                    anchors.centerIn: parent
+                    icon: MediaService.isPlaying ? "media-pause" : "media-play"
+                    pointSize: Style.fontSizeL
+                    color: Color.mOnPrimary
+                  }
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    onEntered: parent.color = Qt.lighter(Color.mPrimary, 1.1)
+                    onExited: parent.color = Color.mPrimary
+                    onClicked: MediaService.playPause()
+                  }
+                }
+
+                NIconButton {
+                  icon: "media-next"
+                  baseSize: Style.baseWidgetSize * 0.9
+                  tooltipText: "Next"
+                  opacity: 0.8
+                  onClicked: MediaService.next()
                 }
               }
             }
+          }
 
-            // Кнопки управления
-            RowLayout {
-              Layout.fillWidth: true
-              Layout.alignment: Qt.AlignHCenter
-              spacing: Style.marginM
+          // Сообщение о загрузке/отсутствии текста 
+          RowLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
+            visible: MediaService.isFetchingLyrics || (!root.hasValidLyrics && !MediaService.isFetchingLyrics)
 
-              NIconButton {
-                icon: "media-prev"
-                baseSize: Style.baseWidgetSize * 0.9
-                tooltipText: "Previous"
-                opacity: 0.8
-                onClicked: MediaService.previous()
+            NText {
+              text: {
+                if (MediaService.isFetchingLyrics)
+                  return "⏳ Загрузка текста..."
+                else
+                  return "📝 Текст не найден"
               }
-
-              Rectangle {
-                implicitWidth: Style.baseWidgetSize * 1.4
-                implicitHeight: Style.baseWidgetSize * 1.4
-                radius: Style.iRadiusCircle
-                color: Color.mPrimary
-
-                NIcon {
-                  anchors.centerIn: parent
-                  icon: MediaService.isPlaying ? "media-pause" : "media-play"
-                  pointSize: Style.fontSizeL
-                  color: Color.mOnPrimary
-                }
-
-                MouseArea {
-                  anchors.fill: parent
-                  cursorShape: Qt.PointingHandCursor
-                  hoverEnabled: true
-                  onEntered: parent.color = Qt.lighter(Color.mPrimary, 1.1)
-                  onExited: parent.color = Color.mPrimary
-                  onClicked: MediaService.playPause()
-                }
-              }
-
-              NIconButton {
-                icon: "media-next"
-                baseSize: Style.baseWidgetSize * 0.9
-                tooltipText: "Next"
-                opacity: 0.8
-                onClicked: MediaService.next()
-              }
+              pointSize: Style.fontSizeS
+              color: MediaService.isFetchingLyrics ? Color.mPrimary : Color.mOnSurfaceVariant
+              opacity: MediaService.isFetchingLyrics ? 1.0 : 0.7
+              font.italic: !MediaService.isFetchingLyrics
             }
           }
         }
@@ -517,83 +490,18 @@ SmartPanel {
         id: lyricsBox
         Layout.fillWidth: true
         Layout.preferredHeight: root.lyricsAreaHeight + root.typeHeight + Style.marginL * 2
-        visible: root.showLyrics
+        visible: root.shouldShowLyricsSection
 
         ColumnLayout {
           anchors.fill: parent
           anchors.margins: Style.marginM
           spacing: Style.marginS
 
-          // Индикатор загрузки
-          RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 25
-            visible: MediaService.isFetchingLyrics
-            spacing: Style.marginS
-
-            Loader {
-              id: loadingIcon
-              Layout.preferredWidth: Style.fontSizeM
-              Layout.preferredHeight: Style.fontSizeM
-              
-              sourceComponent: Item {
-                anchors.fill: parent
-                
-                Rectangle {
-                  anchors.centerIn: parent
-                  width: Style.fontSizeM * 0.7
-                  height: Style.fontSizeM * 0.7
-                  radius: Style.fontSizeM * 0.35
-                  color: Color.mPrimary
-                  
-                  Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width * 0.8
-                    height: parent.height * 0.8
-                    radius: parent.radius * 0.8
-                    color: "transparent"
-                    border.color: Color.mSurface
-                    border.width: 2
-                    
-                    RotationAnimation on rotation {
-                      from: 0
-                      to: 360
-                      duration: 1000
-                      loops: Animation.Infinite
-                    }
-                  }
-                }
-              }
-            }
-
-            NText {
-              text: "Загрузка текста..."
-              pointSize: Style.fontSizeS
-              color: Color.mPrimary
-            }
-          }
-
-          // Текст песни или сообщение
+          // Текст песни
           Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: MediaService.isFetchingLyrics ? 0 : 
-                                   (MediaService.hasLyrics ? root.lyricsAreaHeight - 25 : 40)
-            visible: !MediaService.isFetchingLyrics
+            Layout.preferredHeight: root.lyricsAreaHeight - 25
             clip: true
-
-            // Сообщение когда нет текста
-            NText {
-              anchors.centerIn: parent
-              visible: !MediaService.hasLyrics
-              text: MediaService.lyricsText || "Текст не найден для этого трека"
-              pointSize: Style.fontSizeS
-              color: Color.mOnSurfaceVariant
-              opacity: 0.7
-              horizontalAlignment: Text.AlignHCenter
-              wrapMode: Text.WordWrap
-              width: parent.width - 20
-            }
-
 
             Flickable {
               id: lyricsFlickable
@@ -601,7 +509,6 @@ SmartPanel {
               contentWidth: parent.width
               contentHeight: lyricsColumn.height
               boundsBehavior: Flickable.StopAtBounds
-              visible: MediaService.hasLyrics
               
               Behavior on contentY {
                 SmoothedAnimation {
@@ -630,7 +537,7 @@ SmartPanel {
                       }
                     }
                     
-                    // Для предыдущих строк (2 строки до текущей)
+                    // 2 строки до текущей
                     NText {
                       id: textPreviousItem
                       anchors.centerIn: parent
@@ -660,7 +567,7 @@ SmartPanel {
                       }
                     }
                     
-                    // Для последующих строк (2 строки после текущей)
+                    // 2 строки после текущей
                     NText {
                       id: textNextItem
                       anchors.centerIn: parent
@@ -741,7 +648,6 @@ SmartPanel {
               }
             }
 
-            // Обработчик изменения текущей строки для скролла к центру
             Connections {
               target: MediaService
               function onCurrentLineIndexChanged() {
@@ -751,7 +657,6 @@ SmartPanel {
               }
             }
 
-            // Таймер для отложенного скролла
             Timer {
               id: scrollTimer
               interval: 50
@@ -762,9 +667,23 @@ SmartPanel {
                 var currentItem = lyricsColumn.children[MediaService.currentLineIndex];
                 if (!currentItem) return;
                 
-                var itemCenterY = currentItem.y + currentItem.height / 2;
-                var targetY = itemCenterY - root.lyricsAreaHeight / 2;
-                targetY = Math.max(0, Math.min(targetY, lyricsFlickable.contentHeight - root.lyricsAreaHeight));
+                var itemCenterY = (currentItem.y || 0) + (currentItem.height || 0) / 2;
+                var lyricsHeight = root.lyricsAreaHeight;
+                
+                if (isNaN(lyricsHeight) || lyricsHeight === undefined || lyricsHeight <= 0) {
+                  lyricsHeight = 200;
+                }
+                
+                var targetY = itemCenterY - lyricsHeight / 2;
+                
+                var contentHeight = lyricsFlickable.contentHeight || 0;
+                var maxY = Math.max(0, contentHeight - lyricsHeight);
+                
+                if (isNaN(targetY) || !isFinite(targetY)) {
+                  targetY = 0;
+                }
+                
+                targetY = Math.max(0, Math.min(targetY, maxY));
                 
                 lyricsFlickable.contentY = targetY;
               }
@@ -784,7 +703,7 @@ SmartPanel {
           RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 15
-            visible: MediaService.hasLyrics && !MediaService.isFetchingLyrics
+            visible: root.hasValidLyrics
 
             Item { Layout.fillWidth: true }
 
@@ -796,41 +715,6 @@ SmartPanel {
           }
         }
       }
-    }
-  }
-
-  // Visualizer Components
-  Component {
-    id: linearComponent
-    NLinearSpectrum {
-      width: parent.width - Style.marginS
-      height: 20
-      values: CavaService.values
-      fillColor: Color.mPrimary
-      opacity: 0.4
-      barPosition: Settings.getBarPositionForScreen(root.screen?.name)
-    }
-  }
-
-  Component {
-    id: mirroredComponent
-    NMirroredSpectrum {
-      width: parent.width - Style.marginS
-      height: parent.height - Style.marginS
-      values: CavaService.values
-      fillColor: Color.mPrimary
-      opacity: 0.4
-    }
-  }
-
-  Component {
-    id: waveComponent
-    NWaveSpectrum {
-      width: parent.width - Style.marginS
-      height: parent.height - Style.marginS
-      values: CavaService.values
-      fillColor: Color.mPrimary
-      opacity: 0.4
     }
   }
 }

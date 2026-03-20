@@ -95,7 +95,7 @@ Singleton {
   property string currentLyricsTitle: ""
   property string lastLyricsArtist: ""
   property string lastLyricsTitle: ""
-  property bool debugLyrics: true
+  property bool debugLyrics: false
 
   property int currentLineIndex: {
     if (!useSyncedLyrics || lyricsTimes.length === 0 || lyricsLines.length === 0) {
