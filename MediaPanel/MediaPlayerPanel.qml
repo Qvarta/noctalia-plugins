@@ -15,31 +15,44 @@ SmartPanel {
   preferredWidth: Math.round((root.isSideBySide ? 480 : 400) * Style.uiScaleRatio)
   preferredHeight: Math.round(calculatePreferredHeight() * Style.uiScaleRatio)
 
-  function calculatePreferredHeight() {
-    var baseHeight = 0;
-    
-    // mediaBox
-    if (root.showLyrics) {
-      baseHeight += 300;
-    } else {
-      baseHeight += 60;
-    }
-    
-    // lyricsBox
-    if (root.showLyrics && root.shouldShowLyricsSection) {
-      if (MediaService.isFetchingLyrics) {
-        baseHeight += 20; 
-      } else if (root.hasValidLyrics) {
-        var linesCount = Math.min(MediaService.lyricsLines.length, 10);
-        baseHeight += 80 + (linesCount * 24);
-      }
-    }
-    return baseHeight;
-  }
-
   property var mediaMiniSettings: {
     const widget = BarService.lookupWidget("MediaMini", screen?.name);
     return widget ? widget.widgetSettings : null;
+  }
+  readonly property bool showAlbumArt: !!(mediaMiniSettings && mediaMiniSettings.panelShowAlbumArt !== undefined ? mediaMiniSettings.panelShowAlbumArt : true)
+  readonly property bool compactMode: !!(mediaMiniSettings && mediaMiniSettings.compactMode !== undefined ? mediaMiniSettings.compactMode : false)
+  readonly property bool showLyrics: true
+  readonly property bool isSideBySide: root.compactMode && root.showAlbumArt
+  readonly property bool shouldShowLyricsSection: root.hasValidLyrics && !MediaService.isFetchingLyrics
+  readonly property int loadingHeight: MediaService.isFetchingLyrics ? 25 : 0
+  readonly property int typeHeight: (root.hasValidLyrics && !MediaService.isFetchingLyrics) ? 15 : 0
+  readonly property bool hasValidLyrics: {
+    if (!MediaService.hasLyrics) return false;
+    if (MediaService.isFetchingLyrics) return false;
+    
+    var lyricsText = MediaService.lyricsText || "";
+    if (lyricsText.trim() === "Текст не найден для этого трека") return false;
+    if (MediaService.lyricsLines.length === 0) return false;
+    
+    return true;
+  }
+  readonly property int lyricsAreaHeight: {
+    if (!root.hasValidLyrics) return 0;
+    if (!MediaService.lyricsLines || MediaService.lyricsLines.length === 0) return 0;
+    
+    var displayLines = Math.min(MediaService.lyricsLines.length, 10);
+    var height = 40 + (displayLines * 24);
+    
+    if (isNaN(height) || !isFinite(height)) return 100;
+    return height;
+  }
+
+  function calculatePreferredHeight() {
+    var baseHeight = 300;
+      if (root.hasValidLyrics) {
+        baseHeight += lyricsAreaHeight + 60;
+      }
+    return baseHeight;
   }
 
   function refreshMediaMiniSettings() {
@@ -60,42 +73,6 @@ SmartPanel {
       root.refreshMediaMiniSettings();
     }
   }
-
-  readonly property string visualizerType: (mediaMiniSettings && mediaMiniSettings.visualizerType !== undefined) ? mediaMiniSettings.visualizerType : "linear"
-  readonly property bool showArtistFirst: !!(mediaMiniSettings && mediaMiniSettings.showArtistFirst !== undefined ? mediaMiniSettings.showArtistFirst : true)
-  readonly property bool showAlbumArt: !!(mediaMiniSettings && mediaMiniSettings.panelShowAlbumArt !== undefined ? mediaMiniSettings.panelShowAlbumArt : true)
-  readonly property bool compactMode: !!(mediaMiniSettings && mediaMiniSettings.compactMode !== undefined ? mediaMiniSettings.compactMode : false)
-  readonly property string scrollingMode: (mediaMiniSettings && mediaMiniSettings.scrollingMode !== undefined) ? mediaMiniSettings.scrollingMode : "hover"
-  readonly property bool showLyrics: true
-
-  readonly property bool isSideBySide: root.compactMode && root.showAlbumArt
-
-  readonly property bool hasValidLyrics: {
-    if (!MediaService.hasLyrics) return false;
-    if (MediaService.isFetchingLyrics) return false;
-    
-    var lyricsText = MediaService.lyricsText || "";
-    if (lyricsText.trim() === "Текст не найден для этого трека") return false;
-    if (MediaService.lyricsLines.length === 0) return false;
-    
-    return true;
-  }
-
-  readonly property int lyricsAreaHeight: {
-    if (!root.hasValidLyrics) return 0;
-    if (!MediaService.lyricsLines || MediaService.lyricsLines.length === 0) return 0;
-    
-    var displayLines = Math.min(MediaService.lyricsLines.length, 10);
-    var height = 40 + (displayLines * 24);
-    
-    if (isNaN(height) || !isFinite(height)) return 100;
-    return height;
-  }
-
-  readonly property bool shouldShowLyricsSection: root.hasValidLyrics && !MediaService.isFetchingLyrics
-
-  readonly property int loadingHeight: MediaService.isFetchingLyrics ? 25 : 0
-  readonly property int typeHeight: (root.hasValidLyrics && !MediaService.isFetchingLyrics) ? 15 : 0
 
   panelContent: Item {
     id: playerContent
@@ -432,7 +409,7 @@ SmartPanel {
                 Rectangle {
                   implicitWidth: Style.baseWidgetSize * 1.4
                   implicitHeight: Style.baseWidgetSize * 1.4
-                  radius: Style.iRadiusCircle
+                  radius: 8
                   color: Color.mPrimary
 
                   NIcon {
