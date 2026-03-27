@@ -1,0 +1,18 @@
+{
+  "id": "plugins-panel",
+  "name": "Plugins-panel",
+  "version": "0.0.1",
+  "minNoctaliaVersion": "3.6.0",
+  "author": "Qvarta",
+  "license": "MIT",
+  "description": "Панель для запуска плагинов",
+  "entryPoints": {
+    "main": "Main.qml",
+    "panel": "Panel.qml"
+  },
+  "dependencies": {
+    "plugins": []
+  },
+  "metadata": {
+  }
+}

@@ -1,4 +1,39 @@
 {
   "favorites": [
+    {
+      "id": "org.telegram.desktop",
+      "name": "Telegram",
+      "icon": "org.telegram.desktop",
+      "comment": "New era of messaging",
+      "isFavorite": true
+    },
+    {
+      "id": "DRG Survivor",
+      "name": "DRG Survivor",
+      "icon": "/home/ko/PortProton/data/img/DRG_Survivor.png",
+      "comment": "",
+      "isFavorite": true
+    },
+    {
+      "id": "work",
+      "name": "Work",
+      "icon": "/home/ko/.local/share/applications/11.png",
+      "comment": "Запуск моего Python-приложения",
+      "isFavorite": true
+    },
+    {
+      "id": "ru.linux_gaming.PortProton",
+      "name": "PortProton",
+      "icon": "ru.linux_gaming.PortProton",
+      "comment": "Установка и запуск Windows игр и программ",
+      "isFavorite": true
+    },
+    {
+      "id": "Slay The Spire 2",
+      "name": "Slay The Spire 2",
+      "icon": "/home/ko/PortProton/data/img/SlayTheSpire2.png",
+      "comment": "",
+      "isFavorite": true
+    }
   ]
 }

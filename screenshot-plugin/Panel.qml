@@ -9,70 +9,138 @@ Item {
     
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 250 * Style.uiScaleRatio
-    property real contentPreferredHeight: 340 * Style.uiScaleRatio
+    property real contentPreferredHeight: 200 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
-
-    component ActionButton: Rectangle {
+    
+    property int currentIndex: 0
+    property var actionButtons: ["output", "region", "window"]
+    
+    function takeScreenshotByType(actionType) {
+        if (pluginApi && pluginApi.mainInstance && actionType) {
+            pluginApi.mainInstance.takeScreenshot(actionType);
+        }
+    }
+    
+    function moveSelection(delta) {
+        var newIndex = currentIndex + delta;
+        if (newIndex >= 0 && newIndex < actionButtons.length) {
+            currentIndex = newIndex;
+            
+            var targetY = currentIndex * (52 + 4); 
+            var viewportHeight = buttonsColumn.height;
+            
+            if (targetY < 0) {
+            } else if (targetY + 52 > viewportHeight) {
+            }
+        }
+    }
+    
+    function activateCurrentButton() {
+        if (currentIndex >= 0 && currentIndex < actionButtons.length) {
+            takeScreenshotByType(actionButtons[currentIndex]);
+        }
+    }
+    
+    Keys.onUpPressed: moveSelection(-1)
+    Keys.onDownPressed: moveSelection(1)
+    Keys.onReturnPressed: activateCurrentButton()
+    Keys.onEnterPressed: activateCurrentButton()
+    
+    component ActionButton: Item {
         id: buttonRoot
         property string iconName: ""
         property string text: ""
         property string actionType: ""
+        property int buttonIndex: -1
         property var mouseArea: mouseArea
+        readonly property bool isSelected: buttonIndex === currentIndex
         
         width: parent.width
-        height: 64
-        radius: Style.radiusS
-        color: mouseArea.containsPress ? Color.mSurfaceVariant : 
-               mouseArea.containsMouse ? Qt.darker(Color.mSurface, 1.05) : 
-               Color.mSurface
-        border.width: Style.borderS
-        border.color: mouseArea.containsMouse ? Color.mOutline : Color.mSurface
+        height: 52
         
-        RowLayout {
+        Rectangle {
+            id: buttonRect
             anchors.fill: parent
-            anchors.margins: Style.marginM
-            spacing: Style.marginM
-            
-            NIcon {
-                Layout.alignment: Qt.AlignVCenter
-                icon: buttonRoot.iconName
-                color: Color.mPrimary
-                pointSize: 20  
-                applyUiScale: true
+            radius: 6       
+            border.width: Style.borderS
+            border.color: Color.mOutline
+            color: {
+                if (mouseArea.containsMouse || isSelected) {
+                    return Color.mHover;
+                } else {
+                    return Color.mSurfaceVariant;
+                }
             }
             
-            NText {
-                Layout.alignment: Qt.AlignVCenter
-                text: buttonRoot.text
-                color: Color.mOnSurface
-                font.pointSize: Style.fontSizeM
-                font.weight: Font.Medium
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: Style.marginM
+                spacing: Style.marginM
+                
+                Rectangle {
+                    width: 40
+                    height: 40
+                    radius: 8
+                    color: Color.mOutline
+                    
+                    NIcon {
+                        anchors.centerIn: parent
+                        icon: buttonRoot.iconName
+                        color: Color.mPrimary
+                        width: 24
+                        height: 24
+                    }
+                }
+                
+                NText {
+                    text: buttonRoot.text
+                    color: {
+                        if (mouseArea.containsMouse || isSelected) {
+                            return Color.mOnSecondary;
+                        } else {
+                            return Color.mOnSurface;
+                        }
+                    }
+                    font.pointSize: Style.fontSizeS
+                    font.weight: {
+                        if (mouseArea.containsMouse || isSelected) {
+                            return Font.Bold;
+                        } else {
+                            return Font.Normal;
+                        }
+                    }
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+                
+                Rectangle {
+                    width: 32
+                    height: 32
+                    radius: 16
+                    color: "transparent"
+                    
+                    NIcon {
+                        anchors.centerIn: parent
+                        icon: "chevron-right"
+                        color: (mouseArea.containsMouse || isSelected) ? Color.mOnSurface : Color.mSurfaceVariant
+                        width: 16
+                        height: 16
+                    }
+                }
             }
             
-            Item {
-                Layout.fillWidth: true
-            }
-            
-            NIcon {
-                Layout.alignment: Qt.AlignVCenter
-                icon: "chevron-right"
-                color: Color.mOnSurfaceVariant
-                pointSize: 16  
-                applyUiScale: true
-            }
-        }
-        
-        MouseArea {
-            id: mouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            
-            onClicked: {
-                if (pluginApi && pluginApi.mainInstance && buttonRoot.actionType) {
-                    pluginApi.mainInstance.takeScreenshot(buttonRoot.actionType);
+            MouseArea {
+                id: mouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.LeftButton
+                
+                onClicked: {
+                    currentIndex = buttonIndex;
+                    takeScreenshotByType(buttonRoot.actionType);
                 }
             }
         }
@@ -89,74 +157,48 @@ Item {
                 fill: parent
                 margins: Style.marginM
             }
-            spacing: Style.marginM
+            spacing: Style.marginL
 
-            RowLayout {
+            Rectangle {
                 Layout.fillWidth: true
-                spacing: Style.marginM
+                Layout.fillHeight: true
+                color: Color.mSurfaceVariant
+                radius: 6
+                border.width: Style.borderS
+                border.color: Color.mShadow
                 
-                Rectangle {
-                    width: 48
-                    height: 48
-                    radius: 24
-                    color: Color.mSurfaceVariant
+                Column {
+                    id: buttonsColumn
+                    anchors.fill: parent
+                    anchors.margins: Style.marginM
+                    spacing: 4
                     
-                    NIcon {
-                        anchors.centerIn: parent
-                        icon: "screenshot"
-                        color: Color.mPrimary
-                        pointSize: 24  
-                        applyUiScale: true
-                    }
-                }
-                
-                ColumnLayout {
-                    spacing: Style.marginXS
-                    Layout.fillWidth: true
-                    
-                    NText {
-                        text: pluginApi?.tr("titleLabel")
-                        color: Color.mOnSurface
-                        font.pointSize: Style.fontSizeL
-                        font.weight: Font.Bold
+                    ActionButton {
+                        iconName: "screenshot"
+                        text: pluginApi?.tr("windowLabel") || "Весь экран"
+                        actionType: "output"
+                        buttonIndex: 0
                     }
                     
-                    NText {
-                        text: pluginApi?.tr("titleSubLabel")
-                        color: Color.mOnSurfaceVariant
-                        font.pointSize: Style.fontSizeS
+                    ActionButton {
+                        iconName: "crop"
+                        text: pluginApi?.tr("areaLabel") || "Область"
+                        actionType: "region"
+                        buttonIndex: 1
                     }
-                }
-            }
-
-            NDivider {
-                Layout.fillWidth: true
-            }
-
-            Column {
-                id: buttonsColumn
-                Layout.alignment: Qt.AlignHCenter
-                Layout.fillWidth: true
-                spacing: Style.marginM
-                
-                ActionButton {
-                    iconName: "screenshot"
-                    text: pluginApi?.tr("windowLabel")
-                    actionType: "output"
-                }
-                
-                ActionButton {
-                    iconName: "crop"
-                    text: pluginApi?.tr("areaLabel")
-                    actionType: "region"
-                }
-                
-                ActionButton {
-                    iconName: "zoom-in-area"
-                    text: pluginApi?.tr("activeWindowLabel")
-                    actionType: "window"
+                    
+                    ActionButton {
+                        iconName: "zoom-in-area"
+                        text: pluginApi?.tr("activeWindowLabel") || "Активное окно"
+                        actionType: "window"
+                        buttonIndex: 2
+                    }
                 }
             }
         }
+    }
+    
+    Component.onCompleted: {
+        forceActiveFocus();
     }
 }

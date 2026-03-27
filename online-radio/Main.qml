@@ -246,4 +246,16 @@ Item {
         
         return stations;
     }
+
+    IpcHandler {
+        target: "plugin:online-radio"
+        
+        function toggle() {
+            if (pluginApi) {
+                pluginApi.withCurrentScreen(screen => {
+                    pluginApi.openPanel(screen, this);
+                });
+            }
+        }
+    }
 }

@@ -13,6 +13,9 @@
     "panel": "Panel.qml",
     "settings": "Settings.qml"
   },
+  "resources": {
+    "images": "images/"
+  },
   "dependencies": {
     "plugins": ["vlc"]
   },

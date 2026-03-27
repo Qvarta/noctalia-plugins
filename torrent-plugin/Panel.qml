@@ -332,7 +332,11 @@ Item {
                     width: 36
                     height: 36
                     radius: 8
-                    color: daemonButtonMouseArea.containsMouse ? Color.mError : Color.mOutline
+                    color: {
+                        if (daemonButtonMouseArea.containsMouse) return Color.mError;
+                        if (pluginApi?.mainInstance?.daemonRunning) return Color.mSecondary;
+                        return Color.mOutline;
+                    }
                     
                     Behavior on color {
                         ColorAnimation {
@@ -343,7 +347,10 @@ Item {
                     NIcon {
                         id: daemonIcon
                         anchors.centerIn: parent
-                        icon: "power"
+                        icon: {
+                            if (pluginApi?.mainInstance?.daemonRunning) return "power";
+                            return "power";
+                        }
                         color: daemonButtonMouseArea.containsMouse ? Color.mOnHover : Color.mError
                         pointSize: 24
                         applyUiScale: true
@@ -363,7 +370,12 @@ Item {
                         
                         onClicked: {
                             if (pluginApi?.mainInstance) {
-                                pluginApi.mainInstance.stopDaemon();
+                                var mainInstance = pluginApi.mainInstance;
+                                if (mainInstance.daemonRunning) {
+                                    mainInstance.stopDaemon();
+                                } else {
+                                    mainInstance.startDaemon();
+                                }
                             }
                         }
                     }

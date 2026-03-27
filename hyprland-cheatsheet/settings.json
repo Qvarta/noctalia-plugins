@@ -6,7 +6,7 @@
       "binds": [
         {
           "keys": "F1",
-          "desc": "Шпаргалка"
+          "desc": "Меню плагинов"
         },
         {
           "keys": "PRINT",
@@ -18,7 +18,11 @@
         },
         {
           "keys": "Super + A",
-          "desc": "Лаунчер"
+          "desc": "Меню приложения"
+        },
+        {
+          "keys": "Super + W",
+          "desc": "Меню Обои"
         }
       ]
     },
@@ -55,8 +59,8 @@
           "desc": "Закрыть окно"
         },
         {
-          "keys": "Super + L",
-          "desc": "Блокировка"
+          "keys": "Super + R",
+          "desc": "Рестарт QS"
         },
         {
           "keys": "Super + KP_ADD",
@@ -72,7 +76,7 @@
       "title": "Окна",
       "binds": [
         {
-          "keys": "Super + F1",
+          "keys": "F2",
           "desc": "Полный экран"
         },
         {
@@ -135,89 +139,12 @@
       "title": "Рабочие пространства",
       "binds": [
         {
-          "keys": "Super + 1",
-          "desc": "Переключиться WS1"
+          "keys": "Super + <№>",
+          "desc": "Переключиться WS<№>"
         },
         {
-          "keys": "Super + 2",
-          "desc": "Переключиться WS2"
-        },
-        {
-          "keys": "Super + 3",
-          "desc": "Переключиться WS3"
-        },
-        {
-          "keys": "Super + 4",
-          "desc": "Переключиться WS4"
-        },
-        {
-          "keys": "Super + 5",
-          "desc": "Переключиться WS5"
-        },
-        {
-          "keys": "Super + 6",
-          "desc": "Переключиться WS6"
-        },
-        {
-          "keys": "Super + 7",
-          "desc": "Переключиться WS7"
-        },
-        {
-          "keys": "Super + 8",
-          "desc": "Переключиться WS8"
-        },
-        {
-          "keys": "Super + 9",
-          "desc": "Переключиться WS9"
-        },
-        {
-          "keys": "Super + 0",
-          "desc": "Переключиться WS10"
-        }
-      ]
-    },
-    {
-      "title": "Перемещение окон",
-      "binds": [
-        {
-          "keys": "Super + Shift + 1",
-          "desc": "Окно на WS 1"
-        },
-        {
-          "keys": "Super + Shift + 2",
-          "desc": "Окно на WS 2"
-        },
-        {
-          "keys": "Super + Shift + 3",
-          "desc": "Окно на WS 3"
-        },
-        {
-          "keys": "Super + Shift + 4",
-          "desc": "Окно на WS 4"
-        },
-        {
-          "keys": "Super + Shift + 5",
-          "desc": "Окно на WS 5"
-        },
-        {
-          "keys": "Super + Shift + 6",
-          "desc": "Окно на WS 6"
-        },
-        {
-          "keys": "Super + Shift + 7",
-          "desc": "Окно на WS 7"
-        },
-        {
-          "keys": "Super + Shift + 8",
-          "desc": "Окно на WS 8"
-        },
-        {
-          "keys": "Super + Shift + 9",
-          "desc": "Окно на WS 9"
-        },
-        {
-          "keys": "Super + Shift + 0",
-          "desc": "Окно на WS 10"
+          "keys": "Super + Shift + <№>",
+          "desc": "Окно на WS<№>"
         }
       ]
     }

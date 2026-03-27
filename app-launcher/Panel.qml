@@ -11,10 +11,111 @@ Item {
     
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 280 * Style.uiScaleRatio
-    property real contentPreferredHeight: 480 * Style.uiScaleRatio
+    property real contentPreferredHeight: 420 * Style.uiScaleRatio
     readonly property bool allowAttach: true
-    property int itemHeight: 56
-
+    
+    function isValidApi() {
+        return pluginApi && pluginApi.mainInstance && typeof pluginApi.mainInstance.getFilteredApps === 'function';
+    }
+    
+    function getUiState() {
+        if (!pluginApi || !pluginApi.mainInstance) {
+            return { searchQuery: "", showAllAppsMode: true, favoriteApps: [] };
+        }
+        return {
+            searchQuery: pluginApi.mainInstance.searchQuery,
+            showAllAppsMode: pluginApi.mainInstance.showAllAppsMode,
+            favoriteApps: pluginApi.mainInstance.favoriteApps || []
+        };
+    }
+    
+    function getEmptyStateText() {
+        var state = getUiState();
+        if (state.searchQuery !== "") return "Ничего не найдено";
+        if (!state.showAllAppsMode) return state.favoriteApps.length === 0 ? "Избранное пусто" : "Начните вводить название";
+        return "Начните вводить название приложения";
+    }
+    
+    function getEmptyStateDescription() {
+        var state = getUiState();
+        if (state.searchQuery !== "") return "Попробуйте другой запрос";
+        if (!state.showAllAppsMode) return state.favoriteApps.length === 0 ? "Добавьте приложения в избранное" : "Используйте поле поиска";
+        return "Используйте поле поиска выше";
+    }
+    
+    function getEmptyStateIcon() {
+        if (!pluginApi || !pluginApi.mainInstance) return "apps";
+        var state = getUiState();
+        if (state.searchQuery !== "") return "search-off";
+        if (!state.showAllAppsMode) return state.favoriteApps.length === 0 ? "star" : "search";
+        return "apps";
+    }
+    
+    function ensureVisible(index) {
+        if (!appListView) return;
+        
+        var item = appListView.itemAtIndex(index);
+        if (!item) {
+            appListView.positionViewAtIndex(index, ListView.Contain);
+            return;
+        }
+        
+        var itemY = item.y;
+        var viewportHeight = appListView.height;
+        var contentY = appListView.contentY;
+        
+        if (itemY < contentY) {
+            appListView.contentY = itemY;
+        } else if (itemY + item.height > contentY + viewportHeight) {
+            appListView.contentY = itemY + item.height - viewportHeight;
+        }
+    }
+    
+    function updateSelectedIndex(newIndex, filteredApps) {
+        if (pluginApi && pluginApi.mainInstance) {
+            pluginApi.mainInstance.selectedIndex = Math.max(0, Math.min(newIndex, filteredApps.length - 1));
+            ensureVisible(pluginApi.mainInstance.selectedIndex);
+        }
+    }
+    
+    function getRealAppsCount(filteredApps) {
+        if (!filteredApps) return 0;
+        return filteredApps.filter(function(app) {
+            return !app.isShowAllButton && !app.isShowFavoritesButton;
+        }).length;
+    }
+    
+    function moveSelection(delta) {
+        if (!isValidApi()) return;
+        
+        var filteredApps = pluginApi.mainInstance.getFilteredApps();
+        var newIndex = pluginApi.mainInstance.selectedIndex + delta;
+        
+        if (newIndex >= 0 && newIndex < filteredApps.length) {
+            pluginApi.mainInstance.selectedIndex = newIndex;
+            ensureVisible(newIndex);
+        }
+    }
+    
+    function launchCurrentApp() {
+        if (!isValidApi()) return;
+        
+        var filteredApps = pluginApi.mainInstance.getFilteredApps();
+        if (filteredApps.length > 0) {
+            pluginApi.mainInstance.launchApp(filteredApps[pluginApi.mainInstance.selectedIndex]);
+        }
+    }
+    
+    Keys.onUpPressed: moveSelection(-1)
+    Keys.onDownPressed: moveSelection(1)
+    Keys.onReturnPressed: launchCurrentApp()
+    Keys.onEnterPressed: launchCurrentApp()
+    Keys.onEscapePressed: {
+        if (pluginApi) {
+            pluginApi.closePanel();
+        }
+    }
+    
     anchors.fill: parent
 
     NPopupContextMenu {
@@ -95,12 +196,13 @@ Item {
             
             openAtItem(anchor, null);
             
-            appContextMenu.closed.connect(function() {
+            var closedHandler = function() {
                 if (anchor) {
                     anchor.destroy();
                 }
-                appContextMenu.closed.disconnect(arguments.callee);
-            });
+                appContextMenu.closed.disconnect(closedHandler);
+            };
+            appContextMenu.closed.connect(closedHandler);
         }
         
         function close() {
@@ -116,303 +218,170 @@ Item {
         radius: Style.radiusM
         
         ColumnLayout {
-            anchors {
-                fill: parent
-                margins: Style.marginM
-            }
+            anchors.fill: parent
+            anchors.margins: Style.marginM
             spacing: Style.marginL
-
-            // Панель вкладок
-            Rectangle {
-                id: tabsContainer
-                Layout.fillWidth: true
-                Layout.preferredHeight: 40
-                color: Color.mSurfaceVariant
-                radius: Style.radiusM
-                
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: Style.marginS
-                    spacing: 0
-
-                    // Вкладка "Избранное"
-                    Rectangle {
-                        id: favoritesTab
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        radius: Style.radiusS
-                        color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Color.mPrimary : "transparent"
-                        
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (pluginApi && pluginApi.mainInstance) {
-                                    pluginApi.mainInstance.currentTab = 1;
-                                    pluginApi.mainInstance.selectedIndex = 0;
-                                    pluginApi.mainInstance.searchQuery = "";
-                                    searchInput.text = "";
-                                    pluginApi.mainInstance.allApps = pluginApi.mainInstance.getAllApps();
-                                }
-                            }
-                        }
-                        
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: Style.marginS
-                            
-                            NIcon {
-                                icon: "star"
-                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Color.mOnPrimary : Color.mOnSurfaceVariant
-                                width: 16
-                                height: 16
-                            }
-                            
-                            NText {
-                                text: "Избранное"
-                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Color.mOnPrimary : Color.mOnSurfaceVariant
-                                font.pointSize: Style.fontSizeS
-                                font.weight: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 1 ? Font.Bold : Font.Normal
-                            }
-                        }
-                    }
-                    
-                    // Вкладка "Все приложения"
-                    Rectangle {
-                        id: allAppsTab
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        radius: Style.radiusS
-                        color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 0 ? Color.mPrimary : "transparent"
-                        
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (pluginApi && pluginApi.mainInstance) {
-                                    pluginApi.mainInstance.currentTab = 0;
-                                    pluginApi.mainInstance.selectedIndex = 0;
-                                    pluginApi.mainInstance.searchQuery = "";
-                                    searchInput.text = "";
-                                    pluginApi.mainInstance.allApps = pluginApi.mainInstance.getAllApps();
-                                }
-                            }
-                        }
-                        
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: Style.marginS
-                            
-                            NIcon {
-                                icon: "apps"
-                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 0 ? Color.mOnPrimary : Color.mOnSurfaceVariant
-                                width: 16
-                                height: 16
-                            }
-                            
-                            NText {
-                                text: "Все"
-                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 0 ? Color.mOnPrimary : Color.mOnSurfaceVariant
-                                font.pointSize: Style.fontSizeS
-                                font.weight: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 0 ? Font.Bold : Font.Normal
-                            }
-                        }
-                    }
-                }
-            }
-
-            NTextInput {
-                id: searchInput
-                Layout.fillWidth: true
-                placeholderText: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentTab === 0 ? 
-                                "Поиск приложений..." : "Поиск в избранном..."
-                inputIconName: "search"
-                
-                Keys.onReturnPressed: {
-                    if (pluginApi && pluginApi.mainInstance) {
-                        var filteredApps = pluginApi.mainInstance.getFilteredApps();
-                        if (filteredApps.length > 0) {
-                            pluginApi.mainInstance.launchApp(filteredApps[pluginApi.mainInstance.selectedIndex]);
-                        }
-                    }
-                }
-                
-                Keys.onPressed: function(event) {
-                    if (!pluginApi || !pluginApi.mainInstance) return;
-                    
-                    var filteredApps = pluginApi.mainInstance.getFilteredApps();
-                    
-                    if (event.key === Qt.Key_Escape) {
-                        if (pluginApi) {
-                            pluginApi.closePanel();
-                        }
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) {
-                        pluginApi.mainInstance.selectedIndex = Math.min(pluginApi.mainInstance.selectedIndex + 1, filteredApps.length - 1);
-                        event.accepted = true;
-                        if (appListView.contentHeight > appListView.height) {
-                            appListView.positionViewAtIndex(pluginApi.mainInstance.selectedIndex, ListView.Contain);
-                        }
-                    } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Backtab) {
-                        pluginApi.mainInstance.selectedIndex = Math.max(pluginApi.mainInstance.selectedIndex - 1, 0);
-                        event.accepted = true;
-                        if (appListView.contentHeight > appListView.height) {
-                            appListView.positionViewAtIndex(pluginApi.mainInstance.selectedIndex, ListView.Contain);
-                        }
-                    } else if (event.key === Qt.Key_PageDown) {
-                        pluginApi.mainInstance.selectedIndex = Math.min(pluginApi.mainInstance.selectedIndex + 5, filteredApps.length - 1);
-                        event.accepted = true;
-                        if (appListView.contentHeight > appListView.height) {
-                            appListView.positionViewAtIndex(pluginApi.mainInstance.selectedIndex, ListView.Contain);
-                        }
-                    } else if (event.key === Qt.Key_PageUp) {
-                        pluginApi.mainInstance.selectedIndex = Math.max(pluginApi.mainInstance.selectedIndex - 5, 0);
-                        event.accepted = true;
-                        if (appListView.contentHeight > appListView.height) {
-                            appListView.positionViewAtIndex(pluginApi.mainInstance.selectedIndex, ListView.Contain);
-                        }
-                    }
-                }
-                
-                onTextChanged: {
-                    if (pluginApi && pluginApi.mainInstance) {
-                        pluginApi.mainInstance.searchQuery = text;
-                        pluginApi.mainInstance.selectedIndex = 0;
-                        if (appListView.contentHeight > appListView.height) {
-                            appListView.positionViewAtBeginning();
-                        }
-                    }
-                }
-                
-                Component.onCompleted: {
-                    if (pluginApi && pluginApi.mainInstance) {
-                        pluginApi.mainInstance.initializePanel();
-                        pluginApi.mainInstance.allApps = pluginApi.mainInstance.getAllApps();
-                    }
-                }
-            }
 
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 color: Color.mSurfaceVariant
-                radius: Style.radiusM
+                radius: 6
                 border.width: Style.borderS
-                border.color: Color.mOutline
+                border.color: Color.mShadow
 
                 ListView {
                     id: appListView
                     anchors.fill: parent
-                    anchors.margins: Style.marginS
-                    model: pluginApi && pluginApi.mainInstance ? pluginApi.mainInstance.getFilteredApps() : []
-                    spacing: 2
+                    anchors.margins: Style.marginM
+                    model: isValidApi() ? pluginApi.mainInstance.getFilteredApps() : []
+                    spacing: 4
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
-                    
-                    ScrollBar.vertical: ScrollBar {
-                        id: scrollBar
-                        policy: ScrollBar.AsNeeded
-                        visible: false 
-                    }
+                    keyNavigationEnabled: false 
 
-                    delegate: Rectangle {
-                        id: appDelegate
+                    delegate: Item {
+                        id: delegateContainer
                         width: appListView.width
-                        height: itemHeight
-                        color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mPrimary : Color.mSurfaceVariant
-                        radius: Style.radiusS
-
-                        MouseArea {
-                            id: mouseArea
+                        height: 52
+                        
+                        readonly property bool isShowAllButton: modelData && modelData.isShowAllButton === true
+                        readonly property bool isShowFavoritesButton: modelData && modelData.isShowFavoritesButton === true
+                        readonly property bool isNavButton: isShowAllButton || isShowFavoritesButton
+                        readonly property bool isSelected: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index
+                        
+                        Rectangle {
+                            id: delegateRect
                             anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            onEntered: {
-                                if (pluginApi && pluginApi.mainInstance) {
-                                    pluginApi.mainInstance.selectedIndex = index;
-                                }
-                            }
-                            onClicked: function(mouse) {
-                                if (pluginApi && pluginApi.mainInstance) {
-                                    pluginApi.mainInstance.selectedIndex = index;
-                                    if (mouse.button === Qt.LeftButton) {
-                                        pluginApi.mainInstance.launchApp(modelData);
-                                    } else if (mouse.button === Qt.RightButton) {
-                                        var appDelegatePos = appDelegate.mapToItem(root, 0, 0);
-                                        var clickX = mouse.x + appDelegatePos.x;
-                                        var clickY = mouse.y + appDelegatePos.y;
-                                        appContextMenu.openForApp(modelData, clickX, clickY);
+                            radius: 6       
+                            border.width: Style.borderS
+                            border.color: Color.mOutline
+                            color: {
+                                if (isNavButton) {
+                                    if (delegateMouseArea.containsMouse || isSelected) {
+                                        return Color.mHover;
+                                    } else {
+                                        return Color.mSurfaceVariant;
                                     }
+                                } else if (isSelected) {
+                                    return Color.mPrimary;
+                                } else {
+                                    return Color.mSurfaceVariant;
                                 }
                             }
-                        }
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: Style.marginM
-                            spacing: Style.marginM
-
-                            Rectangle {
-                                width: 40
-                                height: 40
-                                radius: 8
-                                color: Color.mSurfaceVariant
+                            MouseArea {
+                                id: delegateMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 
-                                Image {
-                                    anchors.fill: parent
-                                    anchors.margins: 4
-                                    fillMode: Image.PreserveAspectFit
-                                    source: {
-                                        if (!modelData.icon) return "";
-                                        if (modelData.icon.includes("/")) {
-                                            return "file://" + modelData.icon;
+                                onClicked: function(mouse) {
+                                    if (pluginApi && pluginApi.mainInstance) {
+                                        pluginApi.mainInstance.selectedIndex = index;
+                                        ensureVisible(index);
+                                        
+                                        if (isNavButton) {
+                                            pluginApi.mainInstance.launchApp(modelData);
+                                        } else if (mouse.button === Qt.LeftButton) {
+                                            pluginApi.mainInstance.launchApp(modelData);
+                                        } else if (mouse.button === Qt.RightButton) {
+                                            var delegatePos = delegateContainer.mapToItem(root, 0, 0);
+                                            var clickX = mouse.x + delegatePos.x;
+                                            var clickY = mouse.y + delegatePos.y;
+                                            appContextMenu.openForApp(modelData, clickX, clickY);
                                         }
-                                        return "image://icon/" + modelData.icon;
                                     }
-                                    asynchronous: true
-                                    visible: status === Image.Ready
+                                }
+                            }
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Style.marginM
+                                spacing: Style.marginM
+                                
+                                Rectangle {
+                                    width: 40
+                                    height: 40
+                                    radius: 8
+                                    color: Color.mOutline
                                     
-                                    Rectangle {
+                                    NIcon {
+                                        anchors.centerIn: parent
+                                        icon: isShowAllButton ? "apps" : (isShowFavoritesButton ? "star" : "apps")
+                                        color: Color.mPrimary
+                                        width: 24
+                                        height: 24
+                                        visible: isNavButton || !modelData.icon
+                                    }
+                                    
+                                    Image {
                                         anchors.fill: parent
-                                        color: Color.mSurfaceVariant
-                                        radius: 8
-                                        z: -1
-                                        visible: parent.status === Image.Loading || parent.status === Image.Error
+                                        anchors.margins: 4
+                                        fillMode: Image.PreserveAspectFit
+                                        source: {
+                                            if (!modelData.icon) return "";
+                                            if (modelData.icon.includes("/")) {
+                                                return "file://" + modelData.icon;
+                                            }
+                                            return "image://icon/" + modelData.icon;
+                                        }
+                                        asynchronous: true
+                                        visible: !isNavButton && status === Image.Ready
                                     }
                                 }
                                 
-                                NIcon {
-                                    anchors.centerIn: parent
-                                    icon: "apps"
-                                    color: Color.mOnSurfaceVariant
-                                    width: 24
-                                    height: 24
-                                    visible: !modelData.icon || (typeof modelData.icon === 'string' && modelData.icon.trim() === '')
+                                NText {
+                                    text: {
+                                        if (isShowAllButton) return "Все приложения";
+                                        if (isShowFavoritesButton) return "Избранное";
+                                        return modelData.name || "Unknown";
+                                    }
+                                    color: {
+                                        if (isNavButton) {
+                                            if (delegateMouseArea.containsMouse || isSelected) {
+                                                return Color.mOnSecondary;
+                                            } else {
+                                                return Color.mOnSurface;
+                                            }
+                                        } else if (isSelected) {
+                                            return Color.mOnPrimary;
+                                        } else {
+                                            return Color.mOnSurface;
+                                        }
+                                    }
+                                    font.pointSize: Style.fontSizeS
+                                    font.weight: {
+                                        if (isNavButton) {
+                                            if (delegateMouseArea.containsMouse || isSelected) {
+                                                return Font.Bold;
+                                            } else {
+                                                return Font.Normal;
+                                            }
+                                        } else if (isSelected) {
+                                            return Font.Bold;
+                                        } else {
+                                            return Font.Normal;
+                                        }
+                                    }
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
                                 }
-                            }
-
-                            NText {
-                                text: modelData.name || "Unknown"
-                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mOnPrimary : Color.mOnSurface
-                                font.pointSize: Style.fontSizeS
-                                font.weight: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Font.Bold : Font.Normal
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-
-                            Rectangle {
-                                width: 32
-                                height: 32
-                                radius: 16
-                                color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mSurface : "transparent"
-
-                                NIcon {
-                                    anchors.centerIn: parent
-                                    icon: "chevron-right"
-                                    color: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.selectedIndex === index ? Color.mOnSurface : "transparent"
-                                    width: 16
-                                    height: 16
+                                
+                                Rectangle {
+                                    width: 32
+                                    height: 32
+                                    radius: 16
+                                    color: isSelected ? Color.mSurface : "transparent"
+                                    
+                                    NIcon {
+                                        anchors.centerIn: parent
+                                        icon: "chevron-right"
+                                        color: isSelected ? Color.mOnSurface : "transparent"
+                                        width: 16
+                                        height: 16
+                                    }
                                 }
                             }
                         }
@@ -424,9 +393,9 @@ Item {
                     width: parent.width - 40
                     height: 120
                     visible: {
-                        if (!pluginApi || !pluginApi.mainInstance) return true;
+                        if (!isValidApi()) return true;
                         var filteredApps = pluginApi.mainInstance.getFilteredApps();
-                        return filteredApps.length === 0;
+                        return getRealAppsCount(filteredApps) === 0;
                     }
 
                     ColumnLayout {
@@ -434,20 +403,7 @@ Item {
                         spacing: Style.marginM
                         
                         NIcon {
-                            icon: {
-                                if (!pluginApi || !pluginApi.mainInstance) return "apps";
-                                var searchQuery = pluginApi.mainInstance.searchQuery;
-                                var currentTab = pluginApi.mainInstance.currentTab;
-                                var favoriteApps = pluginApi.mainInstance.favoriteApps || [];
-                                
-                                if (searchQuery !== "") {
-                                    return "search-off";
-                                } else if (currentTab === 1) {
-                                    return favoriteApps.length === 0 ? "star" : "search";
-                                } else {
-                                    return "apps";
-                                }
-                            }
+                            icon: getEmptyStateIcon()
                             color: Color.mOnSurfaceVariant
                             width: 64
                             height: 64
@@ -456,20 +412,7 @@ Item {
                         }
                         
                         NText {
-                            text: {
-                                if (!pluginApi || !pluginApi.mainInstance) return "Нет данных";
-                                var searchQuery = pluginApi.mainInstance.searchQuery;
-                                var currentTab = pluginApi.mainInstance.currentTab;
-                                var favoriteApps = pluginApi.mainInstance.favoriteApps || [];
-                                
-                                if (searchQuery !== "") {
-                                    return "Ничего не найдено";
-                                } else if (currentTab === 1) {
-                                    return favoriteApps.length === 0 ? "Избранное пусто" : "Начните вводить название";
-                                } else {
-                                    return "Начните вводить название приложения";
-                                }
-                            }
+                            text: isValidApi() ? getEmptyStateText() : "Нет данных"
                             color: Color.mOnSurfaceVariant
                             font.pointSize: Style.fontSizeM
                             font.weight: Font.Medium
@@ -477,20 +420,7 @@ Item {
                         }
                         
                         NText {
-                            text: {
-                                if (!pluginApi || !pluginApi.mainInstance) return "Ожидание данных...";
-                                var searchQuery = pluginApi.mainInstance.searchQuery;
-                                var currentTab = pluginApi.mainInstance.currentTab;
-                                var favoriteApps = pluginApi.mainInstance.favoriteApps || [];
-                                
-                                if (searchQuery !== "") {
-                                    return "Попробуйте другой запрос";
-                                } else if (currentTab === 1) {
-                                    return favoriteApps.length === 0 ? "Добавьте приложения в избранное" : "Используйте поле поиска";
-                                } else {
-                                    return "Используйте поле поиска выше";
-                                }
-                            }
+                            text: isValidApi() ? getEmptyStateDescription() : "Ожидание данных..."
                             color: Color.mOnSurfaceVariant
                             font.pointSize: Style.fontSizeS
                             opacity: 0.7
@@ -500,35 +430,44 @@ Item {
                     }
                 }
             }
-
-            Rectangle {
+            
+            NTextInput {
+                id: searchInput
                 Layout.fillWidth: true
-                Layout.preferredHeight: visible ? 30 : 0
-                Layout.alignment: Qt.AlignHCenter 
-                color: "transparent"
-                
-                visible: {
-                    if (!pluginApi || !pluginApi.mainInstance) return false;
-                    // Только на вкладке "Все приложения"
-                    return pluginApi.mainInstance.currentTab === 0;
+                placeholderText: "Поиск приложений..."
+                inputIconName: "search"
+                radius: 6       
+                Keys.onReturnPressed: {
+                    launchCurrentApp();
                 }
-
-                NText {
-                    anchors.centerIn: parent
-                    text: {
-                        if (!pluginApi || !pluginApi.mainInstance) return "";
-                        var currentTab = pluginApi.mainInstance.currentTab;
-                        var total = currentTab === 0 ? 
-                                (pluginApi.mainInstance.allApps ? pluginApi.mainInstance.allApps.length : 0) : 
-                                (pluginApi.mainInstance.favoriteApps ? pluginApi.mainInstance.favoriteApps.length : 0);
-                        var filteredApps = pluginApi.mainInstance.getFilteredApps();
-                        return  "Всего: " + total + " приложений";
+                
+                onTextChanged: {
+                    if (isValidApi()) {
+                        pluginApi.mainInstance.searchQuery = text;
+                        pluginApi.mainInstance.selectedIndex = 0;
+                        ensureVisible(0);
+                        if (appListView.contentHeight > appListView.height) {
+                            appListView.positionViewAtBeginning();
+                        }
                     }
-                    color: Color.mOnSurfaceVariant
-                    font.pointSize: Style.fontSizeM
-                    opacity: 0.8
+                }
+                
+                onActiveFocusChanged: {
+                    if (!activeFocus) {
+                        root.forceActiveFocus();
+                    }
                 }
             }
+        }
+    }
+    
+    Component.onCompleted: {
+        forceActiveFocus();
+        
+        if (pluginApi && pluginApi.mainInstance) {
+            pluginApi.mainInstance.initializePanel();
+            pluginApi.mainInstance.allApps = pluginApi.mainInstance.getAllApps();
+            ensureVisible(0);
         }
     }
 }

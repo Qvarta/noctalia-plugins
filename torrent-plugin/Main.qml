@@ -439,17 +439,26 @@ Item {
     function parseAndUpdateTorrents(output) {
         try {
             var jsonData = JSON.parse(output);
+            var torrents = null;
             
-            if (jsonData.result !== "success" || !jsonData.arguments.torrents) {
+            // Проверяем формат JSON от transmission-remote -j -l
+            if (jsonData.result && jsonData.result.torrents) {
+                torrents = jsonData.result.torrents;
+            } 
+            else if (jsonData.arguments && jsonData.arguments.torrents) {
+                torrents = jsonData.arguments.torrents;
+            }
+            else {
+                return;
+            }
+            
+            if (!torrents || torrents.length === 0) {
                 return;
             }
             
             var foundTorrents = [];
-            var torrents = jsonData.arguments.torrents;
-            
             for (var i = 0; i < torrents.length; i++) {
-                var torrent = torrents[i];
-                var parsedTorrent = parseJsonTorrent(torrent);
+                var parsedTorrent = parseJsonTorrent(torrents[i]);
                 if (parsedTorrent) {
                     foundTorrents.push(parsedTorrent);
                 }
@@ -459,7 +468,7 @@ Item {
                 smoothUpdateModel(foundTorrents);
             }
         } catch (error) {
-            return;
+            // Обработка ошибок без логирования
         }
     }
     
@@ -470,10 +479,15 @@ Item {
             }
             
             var percent = 0;
-            if (torrent.sizeWhenDone && torrent.sizeWhenDone > 0) {
-                var downloaded = torrent.sizeWhenDone - torrent.leftUntilDone;
-                percent = Math.round((downloaded / torrent.sizeWhenDone) * 100);
-            } else if (torrent.percentDone) {
+            
+            // Пробуем разные варианты полей
+            if (torrent.size_when_done && torrent.size_when_done > 0) {
+                var leftUntilDone = torrent.left_until_done !== undefined ? torrent.left_until_done : torrent.leftUntilDone;
+                var downloaded = torrent.size_when_done - (leftUntilDone || 0);
+                percent = Math.round((downloaded / torrent.size_when_done) * 100);
+            } else if (torrent.percent_done !== undefined) {
+                percent = Math.round(torrent.percent_done * 100);
+            } else if (torrent.percentDone !== undefined) {
                 percent = Math.round(torrent.percentDone * 100);
             }
             
@@ -483,7 +497,9 @@ Item {
             if (torrent.status !== undefined) {
                 status = parseJsonStatus(torrent.status);
                 
-                if (torrent.isFinished && status === "idle") {
+                // Проверяем завершенность
+                var isFinished = torrent.is_finished !== undefined ? torrent.is_finished : torrent.isFinished;
+                if (isFinished && status === "idle") {
                     status = "completed";
                 }
             }
@@ -533,8 +549,10 @@ Item {
                 
                 if (changed) {
                     torrentModel.set(existingIndex, {
+                        "id": newTorrent.id,
                         "percent": newTorrent.percent,
-                        "status": newTorrent.status
+                        "status": newTorrent.status,
+                        "name": newTorrent.name
                     });
                 }
                 
@@ -570,7 +588,7 @@ Item {
     }
     
     IpcHandler {
-        target: "plugin:transmission-widget"
+        target: "plugin:torrent-plugin"
         
         function toggle() {
             if (pluginApi) {

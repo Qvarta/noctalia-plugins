@@ -20,6 +20,7 @@ Item {
     property string currentTrack: pluginApi?.pluginSettings?.currentTrack || ""
     property string currentArtist: pluginApi?.pluginSettings?.currentArtist || ""
     
+    visible: isPlaying
     
     readonly property string displayText: {
         if (isPlaying) {
@@ -33,10 +34,10 @@ Item {
                 return currentPlayingStation;
             }
         }
-        return pluginApi?.tr("title") ;
+        return "";
     }
 
-    implicitWidth: 200
+    implicitWidth: displayText === "" ? 32 + 16 : 200
     implicitHeight: 32
 
     anchors {
@@ -81,9 +82,9 @@ Item {
                 id: icon
                 anchors.centerIn: parent
                 icon: root.currentIconName
-                color: mouseArea.containsMouse ? Color.mOnHover : Color.mOnSurface
+                color: mouseArea.containsMouse ? Color.mOnHover : Color.mOnSurfaceVariant
                 
-                pointSize: 16
+                pointSize: 14
                 applyUiScale: true
                 
                 // Вращение иконки при проигрывании
@@ -188,6 +189,11 @@ Item {
                 "action": "widget-settings",
                 "icon": "settings"
             },
+            {
+                "label": pluginApi?.tr("stop"),
+                "action": "stop",
+                "icon": "stop"
+            }
         ]
 
         onTriggered: action => {
@@ -198,6 +204,10 @@ Item {
 
             if (action === "widget-settings") {
                 BarService.openPluginSettings(screen, pluginApi.manifest);
+            } else if (action === "stop") {
+                if (pluginApi && pluginApi.mainInstance) {
+                    pluginApi.mainInstance.stopPlayback();
+                }
             }
         }
     }

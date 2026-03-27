@@ -8,7 +8,6 @@
   "description": "Dynamic keyboard shortcuts cheatsheet that reads and displays Hyprland keybindings. Requires Hyprland window manager.",
   "entryPoints": {
     "main": "Main.qml",
-    "barWidget": "BarWidget.qml",
     "panel": "Panel.qml",
     "settings": "Settings.qml"
   },

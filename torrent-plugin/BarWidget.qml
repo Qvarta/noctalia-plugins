@@ -13,6 +13,8 @@ Item {
     readonly property bool isBarVertical: Settings.data.bar.position === "left" || Settings.data.bar.position === "right"
     readonly property string displayMode: "auto"
 
+    visible: getDaemonRunning() || getIsLoading()
+    
     implicitWidth: 32
     implicitHeight: 32
 
@@ -61,7 +63,7 @@ Item {
             to: Color.mOnSecondary          
             duration: 1200
             loops: Animation.Infinite
-            running: getDaemonRunning() && !getIsLoading()
+            running: getDaemonRunning() && !getIsLoading() && getHasActiveTorrents()
         }
         
         MouseArea {
@@ -84,13 +86,73 @@ Item {
         return pluginApi?.mainInstance?.daemonRunning || false;
     }
     
+    function getTorrentModel() {
+        return pluginApi?.mainInstance?.torrentModel;
+    }
+    
+    function getTorrentsCount() {
+        var model = getTorrentModel();
+        return model ? model.count : 0;
+    }
+    
+    function getHasDownloadingTorrents() {
+        var model = getTorrentModel();
+        if (!model) return false;
+        
+        for (var i = 0; i < model.count; i++) {
+            var torrent = model.get(i);
+            if (torrent.status === "downloading") {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    function getHasSeedingTorrents() {
+        var model = getTorrentModel();
+        if (!model) return false;
+        
+        for (var i = 0; i < model.count; i++) {
+            var torrent = model.get(i);
+            if (torrent.status === "seeding") {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    function getHasPausedTorrents() {
+        var model = getTorrentModel();
+        if (!model) return false;
+        
+        for (var i = 0; i < model.count; i++) {
+            var torrent = model.get(i);
+            if (torrent.status === "stopped") {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    function getHasActiveTorrents() {
+        return getHasDownloadingTorrents() || getHasSeedingTorrents() || getHasPausedTorrents();
+    }
+    
     function getIcon() {
         if (getIsLoading()) {
-            return "loader-3";
-        } else if (getDaemonRunning()) {
-            return "playstation-circle";
+            return "settings";
+        } else if (!getDaemonRunning()) {
+            return "devices-pause";
+        } else if (getTorrentsCount() === 0) {
+            return "settings";
+        } else if (getHasDownloadingTorrents()) {
+            return "arrow-big-down-lines";
+        } else if (getHasSeedingTorrents()) {
+            return "arrow-big-up-lines";
+        } else if (getHasPausedTorrents()) {
+            return "player-pause";
         } else {
-            return "loader-3";
+            return "playstation-circle";
         }
     }
     
@@ -98,7 +160,7 @@ Item {
         if (colorAnim.running) {
             return colorAnim.to;
         }
-        return mouseArea.containsMouse ? Color.mSecondary : Color.mHover;
+        return mouseArea.containsMouse ? Color.mSecondary : Color.mOnSurfaceVariant;
     }
     
     function handleClick() {

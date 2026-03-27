@@ -18,6 +18,7 @@
   "NotLoaded": "No stations loaded",
   "available": "Total: ",
   "nowPlay": "Now Playing",
-  "notSelected":"No station selected",
+  "stop": "Radio off",
+  "notSelected": "No station selected",
   "addStations": "Add stations via JSON file or manually in settings"
 }

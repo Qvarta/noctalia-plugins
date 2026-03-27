@@ -21,6 +21,105 @@ Item {
     }
 
     anchors.fill: parent
+    
+    property int currentIndex: 0
+    
+    function updateCurrentIndex() {
+        if (pluginApi && pluginApi.mainInstance) {
+            var stations = pluginApi.mainInstance.getStations();
+            var currentStation = pluginApi.mainInstance.currentPlayingStation;
+            
+            if (currentStation && currentStation !== "") {
+                for (var i = 0; i < stations.length; i++) {
+                    if (stations[i].name === currentStation) {
+                        currentIndex = i;
+                        ensureVisible(i);
+                        return;
+                    }
+                }
+            }
+        }
+        currentIndex = 0;
+        ensureVisible(0);
+    }
+    
+    function ensureVisible(index) {
+        if (!listView || !listView.model || listView.model.length === 0) return;
+        
+        var item = listView.itemAtIndex(index);
+        if (!item) {
+            listView.positionViewAtIndex(index, ListView.Contain);
+            return;
+        }
+        
+        var itemY = item.y;
+        var viewportHeight = listView.height;
+        var contentY = listView.contentY;
+        
+        if (itemY < contentY) {
+            listView.contentY = itemY;
+        } else if (itemY + item.height > contentY + viewportHeight) {
+            listView.contentY = itemY + item.height - viewportHeight;
+        }
+    }
+    
+    function selectStation(index) {
+        if (index >= 0 && listView.model && index < listView.model.length) {
+            currentIndex = index;
+            ensureVisible(index);
+        }
+    }
+    
+    function moveSelection(delta) {
+        if (!listView.model || listView.model.length === 0) return;
+        
+        var newIndex = currentIndex + delta;
+        if (newIndex >= 0 && newIndex < listView.model.length) {
+            selectStation(newIndex);
+        }
+    }
+    
+    function activateCurrentStation() {
+        if (currentIndex >= 0 && listView.model && currentIndex < listView.model.length) {
+            var station = listView.model[currentIndex];
+            if (station && pluginApi && pluginApi.mainInstance) {
+                var main = pluginApi.mainInstance;
+                
+                if (isStationPlaying(station.name)) {
+                    main.stopPlayback();
+                } else {
+                    main.playStation(station.name, station.url);
+                }
+            }
+        }
+    }
+    
+    Keys.onUpPressed: moveSelection(-1)
+    Keys.onDownPressed: moveSelection(1)
+    Keys.onReturnPressed: activateCurrentStation()
+    Keys.onEnterPressed: activateCurrentStation()
+    
+    function updateSelectionFromPlaying() {
+        if (pluginApi && pluginApi.mainInstance) {
+            var currentStation = pluginApi.mainInstance.currentPlayingStation;
+            if (currentStation && currentStation !== "") {
+                var stations = pluginApi.mainInstance.getStations();
+                for (var i = 0; i < stations.length; i++) {
+                    if (stations[i].name === currentStation) {
+                        if (currentIndex !== i) {
+                            currentIndex = i;
+                            ensureVisible(i);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        if (currentIndex !== 0) {
+            currentIndex = 0;
+            ensureVisible(0);
+        }
+    }
 
     Rectangle {
         id: panelContainer
@@ -29,153 +128,146 @@ Item {
         radius: Style.radiusM
         
         ColumnLayout {
-            anchors {
-                centerIn: parent
-                fill: parent
-                margins: Style.marginM
-            }
-            spacing: Style.marginM
+            anchors.fill: parent
+            anchors.margins: Style.marginM
+            spacing: Style.marginL
 
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 color: Color.mSurfaceVariant
-                radius: Style.radiusM
+                radius: 6
                 border.width: Style.borderS
-                border.color: Color.mOutline
+                border.color: Color.mShadow
 
                 ListView {
                     id: listView
                     anchors.fill: parent
-                    anchors.margins: Style.marginS
+                    anchors.margins: Style.marginM
                     model: pluginApi && pluginApi.mainInstance ? 
                            pluginApi.mainInstance.getStations() : []
-                    spacing: 6
+                    spacing: 4
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     
                     ScrollBar.vertical: ScrollBar {
                         id: scrollBar
                         policy: ScrollBar.AsNeeded
-                        visible: false 
                     }
 
-                    delegate: Rectangle {
-                        property string stationName: modelData.name
-                        property string stationUrl: modelData.url
-                        property int stationIndex: index + 1
-                        readonly property bool isPlaying: root.isStationPlaying(stationName)
-                        id: stationButton
+                    delegate: Item {
+                        id: delegateContainer
                         width: listView.width
-                        height: 48
-                        color: {
-                            if (isStationPlaying(stationName)) {
-                                return Color.mSurface;
-                            } else if (mouseArea.containsPress) {
-                                return Qt.darker(Color.mSurface, 1.1);
-                            } else if (mouseArea.containsMouse) {
-                                return Color.mHover;
-                            } else {
-                                return Color.mSurface;
-                            }
-                        }
-                        radius: 8
-                        border.width: Style.borderL
-                        border.color: isPlaying ? Color.mOutline : Color.mSurface
-
-
-                        RowLayout {
+                        height: 52
+                        
+                        readonly property bool isSelected: index === currentIndex
+                        
+                        Rectangle {
+                            id: delegateRect
                             anchors.fill: parent
-                            anchors.margins: Style.marginM
-                            spacing: Style.marginM
-
-                            Rectangle {
-                                width: 26
-                                height: 26
-                                radius: 6
-                                color: stationButton.isPlaying ? Color.mPrimary : Color.mPrimary
-                                border.width: Style.borderS
-                                border.color: stationButton.isPlaying ? Color.mOnSurfaceVariant : Color.mOutline
-                                
-                                // Иконка 
-                                Loader {
-                                    anchors.centerIn: parent
-                                    sourceComponent: stationButton.isPlaying ? playingIcon : numberIcon
-                                }
-                                
-                                Component {
-                                    id: playingIcon
-                                    NIcon {
-                                        icon: "volume"
-                                        color: Color.mOnPrimary
-                                        pointSize: 16
-                                    }
-                                }
-                                
-                                Component {
-                                    id: numberIcon
-                                    NIcon {
-                                        icon: "number-" + stationIndex + "-small"
-                                        color: Color.mOnPrimary
-                                        pointSize: 22
-                                    }
-                                }
-                                
-                                // Индикатор воспроизведения
-                                // Rectangle {
-                                //     visible: isStationPlaying(modelData.name)
-                                //     width: 10
-                                //     height: 10
-                                //     radius: 5
-                                //     anchors.right: parent.right
-                                //     anchors.bottom: parent.bottom
-                                //     color: Color.mError
-                                //     border.width: 2
-                                //     border.color: Color.mSurface
-                                // }
-
-                            }
-
-                            NText {
-                                text: modelData.name
-                                color: {
-                                    if (stationButton.isPlaying) {
-                                        return Color.mSecondary;
-                                    } else if (mouseArea.containsMouse) {
-                                        return Color.mOnHover;
+                            radius: 6       
+                            border.width: Style.borderS
+                            border.color: Color.mOutline
+                            color: {
+                                if (isStationPlaying(modelData.name)) {
+                                    if (mouseArea.containsMouse || isSelected) {
+                                        return Color.mHover;
                                     } else {
-                                        return Color.mOnSurface;
+                                        return Color.mSurfaceVariant;
                                     }
+                                } else if (mouseArea.containsMouse || isSelected) {
+                                    return Color.mHover;
+                                } else {
+                                    return Color.mSurfaceVariant;
                                 }
-                                font.pointSize: stationButton.isPlaying ? Style.fontSizeM : Style.fontSizeS
-                                elide: Text.ElideRight
-                                // font.weight: stationButton.isPlaying ? Font.Bold : Font.Normal
-                                Layout.fillWidth: true
                             }
 
-                            // NIcon {
-                            //     visible: mouseArea.containsMouse || stationButton.isPlaying 
-                            //     icon: stationButton.isPlaying ? "power" : ""
-                            //     verticalAlignment: Image.AlignVCenter
-                            //     color: Color.mError
-                            //     pointSize: 16
-                            // }
-                        }
-
-                        MouseArea {
-                            id: mouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            onClicked: {
-                                if (pluginApi && pluginApi.mainInstance) {
-                                    var main = pluginApi.mainInstance;
+                            MouseArea {
+                                id: mouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton
+                                
+                                onClicked: {
+                                    currentIndex = index;
+                                    if (pluginApi && pluginApi.mainInstance) {
+                                        var main = pluginApi.mainInstance;
+                                        
+                                        if (isStationPlaying(modelData.name)) {
+                                            main.stopPlayback();
+                                        } else {
+                                            main.playStation(modelData.name, modelData.url);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Style.marginM
+                                spacing: Style.marginM
+                                
+                                Rectangle {
+                                    width: 40
+                                    height: 40
+                                    radius: 8
+                                    color: Color.mOutline
                                     
-                                    if (stationButton.isPlaying) {
-                                        main.stopPlayback();
-                                    } else {
-                                        main.playStation(stationName, stationUrl);
+                                    NIcon {
+                                        anchors.centerIn: parent
+                                        icon: isStationPlaying(modelData.name) ? "volume" : "radio"
+                                        color: Color.mPrimary
+                                        width: 24
+                                        height: 24
+                                    }
+                                }
+                                
+                                NText {
+                                    text: modelData.name
+                                    color: {
+                                        if (isStationPlaying(modelData.name)) {
+                                            if (mouseArea.containsMouse || isSelected) {
+                                                return Color.mOnSecondary;
+                                            } else {
+                                                return Color.mOnSurface;
+                                            }
+                                        } else if (mouseArea.containsMouse || isSelected) {
+                                            return Color.mOnSecondary;
+                                        } else {
+                                            return Color.mOnSurface;
+                                        }
+                                    }
+                                    font.pointSize: Style.fontSizeS
+                                    font.weight: {
+                                        if (isStationPlaying(modelData.name)) {
+                                            if (mouseArea.containsMouse || isSelected) {
+                                                return Font.Bold;
+                                            } else {
+                                                return Font.Normal;
+                                            }
+                                        } else if (mouseArea.containsMouse || isSelected) {
+                                            return Font.Bold;
+                                        } else {
+                                            return Font.Normal;
+                                        }
+                                    }
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                
+                                Rectangle {
+                                    width: 32
+                                    height: 32
+                                    radius: 16
+                                    color: "transparent"
+                                    
+                                    NIcon {
+                                        anchors.centerIn: parent
+                                        icon: "chevron-right"
+                                        color: (mouseArea.containsMouse || isSelected) ? Color.mOnSurface : Color.mSurfaceVariant
+                                        width: 16
+                                        height: 16
                                     }
                                 }
                             }
@@ -195,13 +287,14 @@ Item {
                             NIcon {
                                 icon: "radio"
                                 color: Color.mOnSurfaceVariant
+                                width: 64
+                                height: 64
                                 opacity: 0.5
                                 Layout.alignment: Qt.AlignHCenter
-                                pointSize: 16
                             }
                             
                             NText {
-                                text: pluginApi?.tr("NotLoaded")
+                                text: pluginApi?.tr("NotLoaded") || "Нет данных"
                                 color: Color.mOnSurfaceVariant
                                 font.pointSize: Style.fontSizeM
                                 font.weight: Font.Medium
@@ -209,7 +302,7 @@ Item {
                             }
                             
                             NText {
-                                text: pluginApi?.tr("addStations")
+                                text: pluginApi?.tr("addStations") || "Добавьте радиостанции"
                                 color: Color.mOnSurfaceVariant
                                 font.pointSize: Style.fontSizeS
                                 opacity: 0.7
@@ -220,108 +313,26 @@ Item {
                     }
                 }
             }
-
-            Rectangle {
-                id: currentPlayingContainer
-                Layout.fillWidth: true
-                Layout.preferredHeight: visible ? 50 : 0
-                color: Color.mSurfaceVariant
-                radius: 8
-                border.width: Style.borderS
-                border.color: Color.mOutline
-                
-                visible: isPlaying && pluginApi.mainInstance.currentPlayingStation !== ""
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: Style.marginM
-                    spacing: Style.marginM
-
-                    Rectangle {
-                        width: 30
-                        height: 30
-                        radius: 6
-                        color: Color.mPrimary
-                        
-                        NIcon {
-                            anchors.centerIn: parent
-                            icon: "volume"
-                            color: Color.mOnPrimary
-                            pointSize: 16
-                        }
-                    }
-
-                    ColumnLayout {
-                        spacing: 2
-                        Layout.fillWidth: true
-                        
-                        NText {
-                            text: pluginApi?.tr("nowPlay")
-                            color: Color.mOnSurfaceVariant
-                            font.pointSize: Style.fontSizeXS
-                            font.weight: Font.Medium
-                            opacity: 0.8
-                        }
-                        
-                        NText {
-                            text: pluginApi && pluginApi.mainInstance ? 
-                                  pluginApi.mainInstance.currentPlayingStation || "" : ""
-                            color: Color.mOnSurface
-                            font.pointSize: Style.fontSizeM
-                            font.weight: Font.Bold
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                    }
-                    
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        color: "transparent"
-
-                        NIcon {
-                            anchors.centerIn: parent
-                            icon: "power"
-                            color: stopButton.containsMouse ? Qt.darker(Color.mError, 1.6) : Color.mError
-                            pointSize: 16
-                        }
-
-                        MouseArea {
-                            id: stopButton
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            onClicked: {
-                                if (pluginApi && pluginApi.mainInstance) {
-                                    pluginApi.mainInstance.stopPlayback();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Style.marginL
-                
-                Item {
-                    Layout.fillWidth: true
-                }
-                
-                NText {
-                    text: pluginApi && pluginApi.mainInstance ? 
-                         pluginApi?.tr("available") + pluginApi.mainInstance.getStations().length : ""
-                    color: Color.mOnSurfaceVariant
-                    font.pointSize: Style.fontSizeM
-                    opacity: 0.8
-                }
-                
-                Item {
-                    Layout.fillWidth: true
-                }
-            }
+        }
+    }
+    
+    Component.onCompleted: {
+        currentIndex = 0;
+        updateCurrentIndex();
+        forceActiveFocus();
+        ensureVisible(0);
+    }
+    
+    Connections {
+        target: pluginApi && pluginApi.mainInstance ? pluginApi.mainInstance : null
+        enabled: pluginApi && pluginApi.mainInstance
+        
+        function onCurrentPlayingStationChanged() {
+            updateSelectionFromPlaying();
+        }
+        
+        function onCurrentPlayingProcessStateChanged() {
+            updateSelectionFromPlaying();
         }
     }
 }

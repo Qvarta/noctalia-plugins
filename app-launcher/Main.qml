@@ -15,6 +15,58 @@ Item {
     property string searchQuery: ""
     property int selectedIndex: 0
     property int currentTab: 1 // 0 - Все приложения, 1 - Избранное
+    property bool showAllAppsMode: false // false - показываем избранное, true - показываем все приложения
+    
+    // Экспортируем функции для доступа извне
+    function getFilteredApps() {
+        var query = searchQuery.toLowerCase().trim();
+        var appsToFilter;
+        
+        // Определяем, какие приложения фильтровать
+        if (showAllAppsMode) {
+            appsToFilter = allApps;
+        } else {
+            appsToFilter = favoriteApps;
+        }
+        
+        var filteredApps;
+        
+        if (query === "") {
+            filteredApps = appsToFilter.slice(); // Копируем массив
+        } else {
+            filteredApps = appsToFilter.filter(function(app) {
+                // Пропускаем кнопки навигации при поиске
+                if (app && (app.isShowAllButton || app.isShowFavoritesButton)) return false;
+                
+                var name = (app && app.name || "").toLowerCase();
+                var comment = (app && app.comment || "").toLowerCase();
+                return name.includes(query) || comment.includes(query);
+            });
+        }
+        
+        // Добавляем кнопку навигации в начало списка, если нет поискового запроса
+        if (query === "") {
+            if (!showAllAppsMode) {
+                // В режиме избранного - показываем кнопку "Все приложения"
+                var showAllButton = {
+                    name: "Все приложения",
+                    isShowAllButton: true,
+                    id: "__show_all_apps_button__"
+                };
+                filteredApps.unshift(showAllButton);
+            } else {
+                // В режиме всех приложений - показываем кнопку "Избранное"
+                var showFavoritesButton = {
+                    name: "Избранное",
+                    isShowFavoritesButton: true,
+                    id: "__show_favorites_button__"
+                };
+                filteredApps.unshift(showFavoritesButton);
+            }
+        }
+        
+        return filteredApps;
+    }
     
     Component.onCompleted: {
         if (pluginApi) {
@@ -22,23 +74,36 @@ Item {
         }
         
         loadFavoriteApps();
+        // Загружаем приложения после инициализации
+        Qt.callLater(function() {
+            allApps = getAllApps();
+        });
     }
     
     // Функция для инициализации при открытии панели
     function initializePanel() {
         // Загружаем все приложения при открытии панели
-        allApps = getAllApps();
+        if (allApps.length === 0) {
+            allApps = getAllApps();
+        }
         loadFavoriteApps();
+        showAllAppsMode = false; // Сбрасываем режим при открытии
+        selectedIndex = 0;
+        searchQuery = "";
     }
     
     function loadFavoriteApps() {
         // Загрузка избранных приложений из конфигурации
         if (pluginApi && pluginApi.pluginSettings && pluginApi.pluginSettings.favorites) {
             favoriteApps = pluginApi.pluginSettings.favorites;
-            Logger.i("Загружено избранных приложений:", favoriteApps.length);
+            if (typeof Logger !== 'undefined') {
+                Logger.i("Загружено избранных приложений:", favoriteApps.length);
+            }
         } else {
             favoriteApps = [];
-            Logger.i("Избранные приложения не найдены в настройках");
+            if (typeof Logger !== 'undefined') {
+                Logger.i("Избранные приложения не найдены в настройках");
+            }
         }
     }
     
@@ -84,37 +149,27 @@ Item {
                 
             }
         } catch (e) {
-            Logger.e("Ошибка при загрузке приложений:", e);
+            if (typeof Logger !== 'undefined') {
+                Logger.e("Ошибка при загрузке приложений:", e);
+            }
         }
         
         return apps;
     }
     
-    function getFilteredApps() {
-        var query = searchQuery.toLowerCase().trim();
-        var appsToFilter = currentTab === 0 ? allApps : favoriteApps;
-        
-        if (query === "") {
-            return appsToFilter;
-        }
-        
-        return appsToFilter.filter(function(app) {
-            var name = (app.name || "").toLowerCase();
-            var comment = (app.comment || "").toLowerCase();
-            return name.includes(query) || comment.includes(query);
-        });
-    }
-    
     function isFavorite(appId) {
         return favoriteApps.some(function(app) {
-            return app.id === appId;
+            return app && app.id === appId;
         });
     }
     
     function addToFavorites(app) {
+        // Проверяем, что это не кнопка навигации
+        if (!app || app.isShowAllButton || app.isShowFavoritesButton) return;
+        
         // Проверяем, нет ли уже этого приложения в избранном
         var alreadyInFavorites = favoriteApps.some(function(favApp) {
-            return favApp.id === app.id;
+            return favApp && favApp.id === app.id;
         });
         
         if (!alreadyInFavorites) {
@@ -128,23 +183,31 @@ Item {
             };
             
             favoriteApps.push(favApp);
-            Logger.i("Добавлено в избранное:", app.name || app.id);
+            if (typeof Logger !== 'undefined') {
+                Logger.i("Добавлено в избранное:", app.name || app.id);
+            }
             
             // Сохраняем избранное в настройках
             if (pluginApi && typeof pluginApi.saveSettings === 'function') {
                 try {
                     pluginApi.pluginSettings.favorites = favoriteApps;
                     pluginApi.saveSettings();
-                    Logger.i("MyPlugin", "Избранное сохранено в настройках");
+                    if (typeof Logger !== 'undefined') {
+                        Logger.i("MyPlugin", "Избранное сохранено в настройках");
+                    }
                 } catch (e) {
-                    Logger.e("Ошибка при сохранении избранного:", e);
+                    if (typeof Logger !== 'undefined') {
+                        Logger.e("Ошибка при сохранении избранного:", e);
+                    }
                 }
             }
             
             // Принудительно обновляем свойство для реактивности
             favoriteApps = favoriteApps.slice();
         } else {
-            Logger.i("Приложение уже в избранном:", app.name || app.id);
+            if (typeof Logger !== 'undefined') {
+                Logger.i("Приложение уже в избранном:", app.name || app.id);
+            }
         }
     }
     
@@ -152,20 +215,26 @@ Item {
         var oldLength = favoriteApps.length;
         
         favoriteApps = favoriteApps.filter(function(app) {
-            return app.id !== appId;
+            return app && app.id !== appId;
         });
         
         if (favoriteApps.length < oldLength) {
-            Logger.i("Удалено из избранного:", appId);
+            if (typeof Logger !== 'undefined') {
+                Logger.i("Удалено из избранного:", appId);
+            }
             
             // Сохраняем изменения в настройках
             if (pluginApi && typeof pluginApi.saveSettings === 'function') {
                 try {
                     pluginApi.pluginSettings.favorites = favoriteApps;
                     pluginApi.saveSettings();
-                    Logger.i("MyPlugin", "Избранное обновлено в настройках");
+                    if (typeof Logger !== 'undefined') {
+                        Logger.i("MyPlugin", "Избранное обновлено в настройках");
+                    }
                 } catch (e) {
-                    Logger.e("Ошибка при сохранении избранного:", e);
+                    if (typeof Logger !== 'undefined') {
+                        Logger.e("Ошибка при сохранении избранного:", e);
+                    }
                 }
             }
             
@@ -180,7 +249,7 @@ Item {
         }
         
         return allApps.find(function(app) {
-            return app.id === appId;
+            return app && app.id === appId;
         });
     }
     
@@ -189,12 +258,14 @@ Item {
         
         var fullApp = findAppById(favApp.id);
         if (!fullApp) {
-            Logger.w("Приложение не найдено в общем списке:", favApp.id, favApp.name);
+            if (typeof Logger !== 'undefined') {
+                Logger.w("Приложение не найдено в общем списке:", favApp.id, favApp.name);
+            }
             // Попробуем найти по имени, если не нашли по ID
             fullApp = allApps.find(function(app) {
-                return app.name === favApp.name;
+                return app && app.name === favApp.name;
             });
-            if (fullApp) {
+            if (fullApp && typeof Logger !== 'undefined') {
                 Logger.i("Найдено приложение по имени:", favApp.name);
             }
         }
@@ -202,6 +273,23 @@ Item {
     }
     
     function launchApp(app) {
+        // Проверяем навигационные кнопки
+        if (app) {
+            if (app.isShowAllButton) {
+                // Переключаем режим на отображение всех приложений
+                showAllAppsMode = true;
+                searchQuery = "";
+                selectedIndex = 0;
+                return;
+            } else if (app.isShowFavoritesButton) {
+                // Переключаем режим на отображение избранного
+                showAllAppsMode = false;
+                searchQuery = "";
+                selectedIndex = 0;
+                return;
+            }
+        }
+        
         if (pluginApi) {
             pluginApi.closePanel();
         }
@@ -211,39 +299,51 @@ Item {
                 // Определяем, какое приложение запускать
                 var appToLaunch;
                 
-                if (currentTab === 0) {
-                    // Из общего списка - используем напрямую
+                if (showAllAppsMode) {
+                    // В режиме всех приложений - используем напрямую
                     appToLaunch = app;
                 } else {
                     // Из избранного - ищем полное приложение
                     appToLaunch = getFullAppFromFavorite(app);
                     
                     if (!appToLaunch) {
-                        Logger.e("Не удалось найти полное приложение для запуска:", app.name || app.id);
+                        if (typeof Logger !== 'undefined') {
+                            Logger.e("Не удалось найти полное приложение для запуска:", app.name || app.id);
+                        }
                         // Пробуем запустить напрямую из избранного
                         appToLaunch = app;
-                        Logger.i("Пробуем запустить из избранного напрямую");
+                        if (typeof Logger !== 'undefined') {
+                            Logger.i("Пробуем запустить из избранного напрямую");
+                        }
                     }
                 }
                 
-                Logger.i("Запуск приложения:", appToLaunch.name || appToLaunch.id);
-                
-                if (appToLaunch.command && Array.isArray(appToLaunch.command) && appToLaunch.command.length > 0) {
-                    if (typeof Quickshell !== 'undefined' && Quickshell.execDetached) {
-                        Quickshell.execDetached(appToLaunch.command);
+                if (appToLaunch) {
+                    if (typeof Logger !== 'undefined') {
+                        Logger.i("Запуск приложения:", appToLaunch.name || appToLaunch.id);
                     }
-                } else if (appToLaunch.execute && typeof appToLaunch.execute === 'function') {
-                    appToLaunch.execute();
-                } else if (appToLaunch.exec) {
-                    var command = appToLaunch.exec.split(' ');
-                    if (typeof Quickshell !== 'undefined' && Quickshell.execDetached) {
-                        Quickshell.execDetached(command);
+                    
+                    if (appToLaunch.command && Array.isArray(appToLaunch.command) && appToLaunch.command.length > 0) {
+                        if (typeof Quickshell !== 'undefined' && Quickshell.execDetached) {
+                            Quickshell.execDetached(appToLaunch.command);
+                        }
+                    } else if (appToLaunch.execute && typeof appToLaunch.execute === 'function') {
+                        appToLaunch.execute();
+                    } else if (appToLaunch.exec) {
+                        var command = appToLaunch.exec.split(' ');
+                        if (typeof Quickshell !== 'undefined' && Quickshell.execDetached) {
+                            Quickshell.execDetached(command);
+                        }
+                    } else {
+                        if (typeof Logger !== 'undefined') {
+                            Logger.e("Нет команды для запуска приложения:", appToLaunch.name || appToLaunch.id);
+                        }
                     }
-                } else {
-                    Logger.e("Нет команды для запуска приложения:", appToLaunch.name || appToLaunch.id);
                 }
             } catch (e) {
-                Logger.e("Ошибка при запуске приложения:", e);
+                if (typeof Logger !== 'undefined') {
+                    Logger.e("Ошибка при запуске приложения:", e);
+                }
             }
         });
     }

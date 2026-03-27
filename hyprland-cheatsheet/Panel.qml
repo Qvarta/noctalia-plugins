@@ -9,8 +9,17 @@ Item {
     property var pluginApi: null
     property var rawCategories: pluginApi?.pluginSettings?.cheatsheetData || []
     property var categories: rawCategories
-    
-    property real contentPreferredWidth: 500
+
+    // readonly property var geometryPlaceholder: panelContainer
+    // readonly property bool panelAnchorHorizontalCenter: true
+    // readonly property bool panelAnchorVerticalCenter: true
+    readonly property bool allowAttach: true 
+
+    property var categoryExpanded: ({})
+    property int currentExpandedIndex: 1
+    property int currentIndex: -1
+
+    property real contentPreferredWidth: 460
     property real contentPreferredHeight: {
         var hasExpanded = false;
         for (var i = 0; i < categories.length; i++) {
@@ -21,14 +30,70 @@ Item {
         }
         
         if (!hasExpanded) {
-            return 480;
+            return 420;
         } else {
             return 600;
         }
     }
     
-    property var categoryExpanded: ({})
-    property int currentExpandedIndex: -1
+    // anchors.fill: parent
+
+    function moveSelection(delta) {
+        if (categories.length === 0) return;
+        
+        var newIndex = currentIndex + delta;
+        if (newIndex >= 0 && newIndex < categories.length) {
+            currentIndex = newIndex;
+            
+            // Ensure the selected category is visible
+            var targetY = 0;
+            for (var i = 0; i < currentIndex; i++) {
+                targetY += getCategoryHeight(i);
+            }
+            
+            var viewportHeight = flickable.height;
+            
+            if (targetY < flickable.contentY) {
+                flickable.contentY = targetY;
+            } else if (targetY + getCategoryHeight(currentIndex) > flickable.contentY + viewportHeight) {
+                flickable.contentY = targetY + getCategoryHeight(currentIndex) - viewportHeight;
+            }
+        }
+    }
+    
+    function getCategoryHeight(index) {
+        if (index >= 0 && index < categories.length) {
+            var expanded = categoryExpanded[index] || false;
+            if (expanded) {
+                var bindsHeight = getBindsHeight(index);
+                return 50 + bindsHeight + 12; // header height + binds column height + margin
+            } else {
+                return 50;
+            }
+        }
+        return 50;
+    }
+    
+    function getBindsHeight(index) {
+        if (index >= 0 && index < categories.length) {
+            var category = categories[index];
+            if (category && category.binds) {
+                return category.binds.length * 28; // each bind item height 28
+            }
+        }
+        return 0;
+    }
+    
+    function activateCurrentCategory() {
+        if (currentIndex >= 0 && currentIndex < categories.length) {
+            toggleCategory(currentIndex);
+        }
+    }
+    
+    Keys.onUpPressed: moveSelection(-1)
+    Keys.onDownPressed: moveSelection(1)
+    Keys.onReturnPressed: activateCurrentCategory()
+    Keys.onEnterPressed: activateCurrentCategory()
 
     Component.onCompleted: {
         var expanded = {};
@@ -37,6 +102,8 @@ Item {
         }
         categoryExpanded = expanded;
         currentExpandedIndex = -1;
+        currentIndex = categories.length > 0 ? 0 : -1;
+        forceActiveFocus();
     }
     
     onCategoriesChanged: {
@@ -45,6 +112,12 @@ Item {
             expanded[i] = (i === currentExpandedIndex);
         }
         categoryExpanded = expanded;
+        
+        if (currentIndex >= categories.length) {
+            currentIndex = categories.length > 0 ? 0 : -1;
+        } else if (currentIndex === -1 && categories.length > 0) {
+            currentIndex = 0;
+        }
     }
     
     function toggleCategory(index) {
@@ -65,17 +138,14 @@ Item {
         categoryExpanded = newExpanded;
     }
     
-    readonly property var geometryPlaceholder: panelContainer
-    readonly property bool allowAttach: false 
-    readonly property bool panelAnchorHorizontalCenter: true
-    readonly property bool panelAnchorVerticalCenter: true
-    anchors.fill: parent
-    
     Rectangle {
         id: panelContainer
         anchors.fill: parent
+        anchors.margins: Style.marginS
         color: Color.mSurface
-        radius: Style.radiusL
+        radius: Style.radiusM        
+        border.width: Style.borderS
+        border.color: Color.mOutline
         clip: true
         
         NText {
@@ -126,6 +196,7 @@ Item {
                         color: "transparent"
                         
                         readonly property bool expanded: categoryExpanded[index] || false
+                        readonly property bool isSelected: index === currentIndex
                         
                         Behavior on height {
                             NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
@@ -141,15 +212,21 @@ Item {
                             radius: 8
                             anchors.horizontalCenter: parent.horizontalCenter
                             
-                            color: expanded ? Color.mHover : Color.mSurfaceVariant
+                            color: (mouseArea.containsMouse || isSelected) ? 
+                                   Color.mHover : (expanded ? Color.mHover : Color.mSurfaceVariant)
                             
                             Behavior on color {
                                 ColorAnimation { duration: 150 }
                             }
                             
                             MouseArea {
+                                id: mouseArea
                                 anchors.fill: parent
-                                onClicked: root.toggleCategory(index)
+                                hoverEnabled: true
+                                onClicked: {
+                                    currentIndex = index;
+                                    root.toggleCategory(index);
+                                }
                                 
                                 Row {
                                     anchors.fill: parent
@@ -161,8 +238,9 @@ Item {
                                         icon: pluginApi?.mainInstance?.getCategoryIcon(modelData.title)
                                         pointSize: 20
                                         
-                                        // Анимированное изменение цвета иконки
-                                        color: expanded ? Color.mOnHover : Color.mPrimary
+                                        // Анимированное изменение цвета иконки при ховере или expanded
+                                        color: (mouseArea.containsMouse || isSelected) ? 
+                                               Color.mOnHover : (expanded ? Color.mOnHover : Color.mPrimary)
                                         
                                         Behavior on color {
                                             ColorAnimation { duration: 150 }
@@ -177,8 +255,9 @@ Item {
                                         font.pointSize: Style.fontSizeXL
                                         font.weight: Font.Medium
                                         
-                                        // Анимированное изменение цвета текста
-                                        color: expanded ? Color.mOnHover : Color.mPrimary
+                                        // Анимированное изменение цвета текста при ховере или expanded
+                                        color: (mouseArea.containsMouse || isSelected) ? 
+                                               Color.mOnHover : (expanded ? Color.mOnHover : Color.mPrimary)
                                         
                                         Behavior on color {
                                             ColorAnimation { duration: 150 }
