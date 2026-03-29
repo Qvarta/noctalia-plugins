@@ -18,7 +18,7 @@ Item {
     
     property real contentPreferredHeight: (buttonCount * buttonHeight) + 
                                           ((buttonCount - 1) * buttonSpacing) + 
-                                          2*verticalMargins
+                                          verticalMargins
     
     width: contentPreferredWidth
     height: contentPreferredHeight
@@ -75,15 +75,6 @@ Item {
         color: Color.mSurface
         radius: Style.radiusM
         
-        Rectangle {
-            id: innerContainer
-            anchors.fill: parent
-            anchors.margins: Style.marginM
-            color: Color.mSurfaceVariant
-            radius: 6
-            border.width: Style.borderS
-            border.color: Color.mShadow
-            
             Flickable {
                 id: flickable
                 anchors.fill: parent
@@ -146,8 +137,7 @@ Item {
                                             anchors.centerIn: parent
                                             icon: modelData.icon
                                             color: Color.mPrimary
-                                            width: 24
-                                            height: 24
+                                            pointSize: 24
                                         }
                                     }
                                     
@@ -173,10 +163,8 @@ Item {
                                         NIcon {
                                             anchors.centerIn: parent
                                             icon: "chevron-right"
-                                            color: (mouseArea.containsMouse || isSelected) ? 
-                                                   Color.mOnSurface : Color.mSurfaceVariant
-                                            width: 16
-                                            height: 16
+                                            color: Color.mSurfaceVariant
+                                            pointSize: 16
                                         }
                                     }
                                 }
@@ -185,7 +173,6 @@ Item {
                     }
                 }
             }
-        }
     }
     
     Component.onCompleted: {

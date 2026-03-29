@@ -30,7 +30,7 @@ NBox {
   readonly property bool isClearNight: testEffects === "clear_night" || (testEffects === "" && (currentWeatherCode === 0 && !isDayTime))
 
   visible: Settings.data.location.weatherEnabled
-  implicitHeight: Math.max(100 * Style.uiScaleRatio, content.implicitHeight + (Style.marginXL * 2))
+  implicitHeight: content.implicitHeight + (Style.marginXL * 2)
 
   // Weather effect layer (rain/snow)
   Loader {
@@ -92,8 +92,8 @@ NBox {
   ColumnLayout {
     id: content
     anchors.fill: parent
-    anchors.margins: Style.marginXL
-    spacing: Style.marginM
+    anchors.margins: Style.marginL
+    spacing: Style.marginS
     clip: true
 
     // ЗАГОЛОВОК: Название города и часовой пояс

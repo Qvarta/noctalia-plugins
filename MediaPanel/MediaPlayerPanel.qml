@@ -23,7 +23,11 @@ SmartPanel {
   readonly property bool compactMode: !!(mediaMiniSettings && mediaMiniSettings.compactMode !== undefined ? mediaMiniSettings.compactMode : false)
   readonly property bool showLyrics: true
   readonly property bool isSideBySide: root.compactMode && root.showAlbumArt
+  
+  property bool showLyricsSectionInternal: false
   readonly property bool shouldShowLyricsSection: root.hasValidLyrics && !MediaService.isFetchingLyrics
+  readonly property bool showLyricsSection: root.showLyricsSectionInternal && root.shouldShowLyricsSection
+  
   readonly property int loadingHeight: MediaService.isFetchingLyrics ? 25 : 0
   readonly property int typeHeight: (root.hasValidLyrics && !MediaService.isFetchingLyrics) ? 15 : 0
   readonly property bool hasValidLyrics: {
@@ -49,15 +53,19 @@ SmartPanel {
 
   function calculatePreferredHeight() {
     var baseHeight = 300;
-      if (root.hasValidLyrics) {
-        baseHeight += lyricsAreaHeight + 60;
-      }
+    if (root.showLyricsSection && root.hasValidLyrics) {
+      baseHeight += lyricsAreaHeight + 60;
+    }
     return baseHeight;
   }
 
   function refreshMediaMiniSettings() {
     const widget = BarService.lookupWidget("MediaMini", screen?.name);
     root.mediaMiniSettings = widget ? widget.widgetSettings : null;
+  }
+  
+  function toggleLyricsSection() {
+    root.showLyricsSectionInternal = !root.showLyricsSectionInternal;
   }
 
   Connections {
@@ -84,7 +92,6 @@ SmartPanel {
       id: mainLayout
       anchors.fill: parent
       anchors.margins: Style.marginL
-      spacing: Style.marginL
       z: 1
 
     // Заголовок
@@ -110,6 +117,14 @@ SmartPanel {
             pointSize: Style.fontSizeL
             color: Color.mOnSurface
             Layout.fillWidth: true
+          }
+
+          NIconButton {
+            icon: root.showLyricsSection ? "notes-off" : "notes"
+            tooltipText: root.showLyricsSection ? "Скрыть текст" : "Показать текст"
+            baseSize: Style.baseWidgetSize * 0.8
+            visible: root.hasValidLyrics || MediaService.lyricsLines.length > 0
+            onClicked: root.toggleLyricsSection()
           }
 
           Rectangle {
@@ -225,11 +240,45 @@ SmartPanel {
         Layout.fillWidth: true
         Layout.preferredHeight: root.showLyrics ? 200 * Style.uiScaleRatio : 110 * Style.uiScaleRatio
         radius: Style.iRadiusL
+        clip: true
+        border.width: 1
+
+        
+        // Фоновое изображение - размытая обложка
+        Rectangle {
+          id: backgroundOverlay
+          anchors.fill: parent
+          radius: Style.iRadiusL
+          color: "#80000000"  // Полупрозрачный черный для лучшей читаемости
+          z: 0
+        }
+        
+        NImageRounded {
+          id: backgroundImage
+          anchors.fill: parent
+          imagePath: MediaService.trackArtUrl
+          imageFillMode: Image.PreserveAspectCrop
+          fallbackIcon: "disc"
+          fallbackIconSize: Style.fontSizeXXXL * 2
+          radius: Style.iRadiusL
+          opacity: 0.4
+          z: 0
+          
+          layer.enabled: true
+          layer.effect: MultiEffect {
+            blurEnabled: true
+            blurMax: 32
+            blur: 0.8
+            saturation: 0.5
+            brightness: 0.2
+          }
+        }
 
         ColumnLayout {
           anchors.fill: parent
           anchors.margins: Style.marginM
           spacing: Style.marginS
+          z: 1
 
           RowLayout {
             Layout.fillWidth: true
@@ -278,7 +327,7 @@ SmartPanel {
                 NText {
                   Layout.fillWidth: true
                   text: MediaService.trackTitle || "No Media"
-                  pointSize: Style.fontSizeL
+                  pointSize: Style.fontSizeXL
                   font.weight: Style.fontWeightBold
                   color: Color.mOnSurface
                   elide: Text.ElideRight
@@ -297,7 +346,8 @@ SmartPanel {
                     }
                     return "Unknown Artist";
                   }
-                  pointSize: Style.fontSizeXS
+                  pointSize: 10
+                  font.weight: Style.fontWeightBold
                   color: Color.mOnSurfaceVariant
                   elide: Text.ElideRight
                   maximumLineCount: 1
@@ -305,7 +355,7 @@ SmartPanel {
               }
 
               // Прогресс бар
-              Item {
+            Item {
                 id: progressWrapper
                 visible: (MediaService.currentPlayer && MediaService.trackLength > 0)
                 Layout.fillWidth: true
@@ -462,232 +512,164 @@ SmartPanel {
         }
       }
 
-      // Lyrics section
-      NBox {
-        id: lyricsBox
+      // Lyrics секция
+      Item {
+        id: lyricsContainer
         Layout.fillWidth: true
-        Layout.preferredHeight: root.lyricsAreaHeight + root.typeHeight + Style.marginL * 2
-        visible: root.shouldShowLyricsSection
+        Layout.preferredHeight: root.showLyricsSection
+          ? (root.lyricsAreaHeight + root.typeHeight + Style.marginL * 2)
+          : 0
+        clip: true
 
-        ColumnLayout {
+        Behavior on Layout.preferredHeight {
+          NumberAnimation {
+            duration: 300
+            easing.type: Easing.InOutQuad
+          }
+        }
+
+        opacity: root.showLyricsSection ? 1 : 0
+
+        Behavior on opacity {
+          NumberAnimation {
+            duration: 250
+            easing.type: Easing.InOutQuad
+          }
+        }
+
+        transform: Translate {
+          y: root.showLyricsSection ? 0 : -20
+
+          Behavior on y {
+            NumberAnimation {
+              duration: 300
+              easing.type: Easing.OutCubic
+            }
+          }
+        }
+
+        // Фон
+        Rectangle {
           anchors.fill: parent
-          anchors.margins: Style.marginM
-          spacing: Style.marginS
+          radius: Style.iRadiusL
+          border.color: Color.mOutline
+          border.width: Style.borderS
 
-          // Текст песни
-          Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: root.lyricsAreaHeight - 25
-            clip: true
+          gradient: Gradient {
+            // orientation: Gradient.TopToBottom
 
-            Flickable {
-              id: lyricsFlickable
-              anchors.fill: parent
-              contentWidth: parent.width
-              contentHeight: lyricsColumn.height
+            GradientStop {
+              position: 0.0
+              color: Qt.rgba(Color.mSurface.r, Color.mSurface.g, Color.mSurface.b, 0.95)
+            }
+
+            GradientStop {
+              position: 1.0
+              color: Qt.rgba(Color.mSurfaceVariant.r, Color.mSurfaceVariant.g, Color.mSurfaceVariant.b, 0.95)
+            }
+          }
+        }
+
+        // Текст
+        NBox {
+          anchors.fill: parent
+          color: "transparent"
+          border.color: Color.mOutline
+
+          ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Style.marginM
+            spacing: Style.marginS
+
+            //  Lyrics List
+            ListView {
+              id: lyricsList
+              Layout.fillWidth: true
+              Layout.preferredHeight: root.lyricsAreaHeight - 25
+
+              model: MediaService.lyricsLines
+              clip: true
+              spacing: 0
+
               boundsBehavior: Flickable.StopAtBounds
-              
+
+              currentIndex: (MediaService.useSyncedLyrics && MediaService.currentLineIndex >= 0)
+                ? MediaService.currentLineIndex
+                : -1
+
+              highlightFollowsCurrentItem: MediaService.useSyncedLyrics
+              preferredHighlightBegin: height / 2
+              preferredHighlightEnd: height / 2
+              highlightRangeMode: ListView.StrictlyEnforceRange
+
+              cacheBuffer: 400
+
               Behavior on contentY {
                 SmoothedAnimation {
-                  duration: 500
-                  velocity: 200
+                  velocity: 60  
+                  duration: 0      
                 }
               }
-              
-              Column {
-                id: lyricsColumn
-                width: parent.width
-                spacing: 4 
-                topPadding: 15
-                bottomPadding: 15
-                
-                Repeater {
-                  model: MediaService.lyricsLines
-                  
-                  delegate: Item {
-                    width: lyricsColumn.width
-                    height: {
-                      if (MediaService.useSyncedLyrics && index === MediaService.currentLineIndex) {
-                        return textCurrentItem.height + 16;
-                      } else {
-                        return textNormalItem.height + 4;
-                      }
-                    }
-                    
-                    // 2 строки до текущей
-                    NText {
-                      id: textPreviousItem
-                      anchors.centerIn: parent
-                      visible: MediaService.useSyncedLyrics && (index === MediaService.currentLineIndex - 1 || index === MediaService.currentLineIndex - 2)
-                      text: modelData
-                      pointSize: {
-                        if (index === MediaService.currentLineIndex - 1) return Style.fontSizeL;
-                        if (index === MediaService.currentLineIndex - 2) return Style.fontSizeM;
-                        return Style.fontSizeM;
-                      }
-                      opacity: {
-                        if (index === MediaService.currentLineIndex - 1) return 0.9;
-                        if (index === MediaService.currentLineIndex - 2) return 0.8;
-                        return 0.4;
-                      }
-                      color: Color.mOnSurfaceVariant
-                      horizontalAlignment: Text.AlignHCenter
-                      wrapMode: Text.WordWrap
-                      width: parent.width - 20
-                      
-                      Behavior on opacity {
-                        NumberAnimation { duration: 200 }
-                      }
-                      
-                      Behavior on pointSize {
-                        NumberAnimation { duration: 200 }
-                      }
-                    }
-                    
-                    // 2 строки после текущей
-                    NText {
-                      id: textNextItem
-                      anchors.centerIn: parent
-                      visible: MediaService.useSyncedLyrics && (index === MediaService.currentLineIndex + 1 || index === MediaService.currentLineIndex + 2)
-                      text: modelData
-                      pointSize: {
-                        if (index === MediaService.currentLineIndex + 1) return Style.fontSizeL;
-                        if (index === MediaService.currentLineIndex + 2) return Style.fontSizeM;
-                        return Style.fontSizeM;
-                      }
-                      opacity: {
-                        if (index === MediaService.currentLineIndex + 1) return 0.9;
-                        if (index === MediaService.currentLineIndex + 2) return 0.8;
-                        return 0.4;
-                      }
-                      color: Color.mOnSurfaceVariant
-                      horizontalAlignment: Text.AlignHCenter
-                      wrapMode: Text.WordWrap
-                      width: parent.width - 20
-                      
-                      Behavior on opacity {
-                        NumberAnimation { duration: 200 }
-                      }
-                      
-                      Behavior on pointSize {
-                        NumberAnimation { duration: 200 }
-                      }
-                    }
-                    
-                    // Для обычных строк
-                    NText {
-                      id: textNormalItem
-                      anchors.centerIn: parent
-                      visible: !MediaService.useSyncedLyrics || 
-                              (index !== MediaService.currentLineIndex && 
-                                index !== MediaService.currentLineIndex - 1 && 
-                                index !== MediaService.currentLineIndex - 2 &&
-                                index !== MediaService.currentLineIndex + 1 &&
-                                index !== MediaService.currentLineIndex + 2)
-                      text: modelData
-                      pointSize: Style.fontSizeS
-                      color: {
-                        if (!MediaService.useSyncedLyrics) return Color.mOnSurface;
-                        return Color.mOnSurfaceVariant;
-                      }
-                      opacity: {
-                        if (!MediaService.useSyncedLyrics) return 1.0;
-                        return 0.3;
-                      }
-                      horizontalAlignment: Text.AlignHCenter
-                      wrapMode: Text.WordWrap
-                      width: parent.width - 20
-                      
-                      Behavior on opacity {
-                        NumberAnimation { duration: 200 }
-                      }
-                    }
-                    
-                    // Текущая строка
-                    NText {
-                      id: textCurrentItem
-                      anchors.centerIn: parent
-                      visible: MediaService.useSyncedLyrics && index === MediaService.currentLineIndex
-                      text: modelData
-                      pointSize: Style.fontSizeXXL
-                      font.weight: Style.fontWeightBold
-                      color: Color.mPrimary
-                      horizontalAlignment: Text.AlignHCenter
-                      wrapMode: Text.WordWrap
-                      width: parent.width - 20
-                      
-                      Behavior on pointSize {
-                        NumberAnimation { duration: 200 }
-                      }
-                    }
+
+              delegate: Item {
+                width: lyricsList.width
+                height: textItem.implicitHeight + 6 
+
+                readonly property bool isCurrent: index === MediaService.currentLineIndex
+                readonly property int diff: index - MediaService.currentLineIndex
+
+                NText {
+                  id: textItem
+                  anchors.centerIn: parent
+                  width: parent.width - 20
+                  wrapMode: Text.WordWrap
+                  horizontalAlignment: Text.AlignHCenter
+                  text: modelData
+
+                  pointSize: {
+                    if (!MediaService.useSyncedLyrics) return Style.fontSizeS
+                    if (isCurrent) return Style.fontSizeXXL
+                    if (Math.abs(diff) === 1) return Style.fontSizeL
+                    if (Math.abs(diff) === 2) return Style.fontSizeM
+                    return Style.fontSizeS
+                  }
+
+                  opacity: {
+                    if (!MediaService.useSyncedLyrics) return 1.0
+                    if (isCurrent) return 1.0
+                    if (Math.abs(diff) === 1) return 0.9
+                    if (Math.abs(diff) === 2) return 0.7
+                    return 0.3
+                  }
+
+                  color: isCurrent ? Color.mPrimary : Color.mOnSurfaceVariant
+                  font.weight: isCurrent ? Style.fontWeightBold : Style.fontWeightRegular
+                  Behavior on opacity {
+                    NumberAnimation { duration: 180 }
+                  }
+
+                  Behavior on pointSize {
+                    NumberAnimation { duration: 180 }
                   }
                 }
               }
             }
 
-            Connections {
-              target: MediaService
-              function onCurrentLineIndexChanged() {
-                if (MediaService.useSyncedLyrics && MediaService.currentLineIndex >= 0) {
-                  scrollTimer.restart();
-                }
+            // Тип текста
+            RowLayout {
+              Layout.fillWidth: true
+              Layout.preferredHeight: 15
+              visible: root.hasValidLyrics
+
+              Item { Layout.fillWidth: true }
+
+              NText {
+                text: MediaService.useSyncedLyrics
+                  ? "🎤 синхронизировано"
+                  : "📝 текст"
+                pointSize: Style.fontSizeXS
+                color: Color.mOnSurfaceVariant
               }
-            }
-
-            Timer {
-              id: scrollTimer
-              interval: 50
-              repeat: false
-              onTriggered: {
-                if (MediaService.currentLineIndex < 0) return;
-                
-                var currentItem = lyricsColumn.children[MediaService.currentLineIndex];
-                if (!currentItem) return;
-                
-                var itemCenterY = (currentItem.y || 0) + (currentItem.height || 0) / 2;
-                var lyricsHeight = root.lyricsAreaHeight;
-                
-                if (isNaN(lyricsHeight) || lyricsHeight === undefined || lyricsHeight <= 0) {
-                  lyricsHeight = 200;
-                }
-                
-                var targetY = itemCenterY - lyricsHeight / 2;
-                
-                var contentHeight = lyricsFlickable.contentHeight || 0;
-                var maxY = Math.max(0, contentHeight - lyricsHeight);
-                
-                if (isNaN(targetY) || !isFinite(targetY)) {
-                  targetY = 0;
-                }
-                
-                targetY = Math.max(0, Math.min(targetY, maxY));
-                
-                lyricsFlickable.contentY = targetY;
-              }
-            }
-
-            Connections {
-              target: lyricsColumn
-              function onHeightChanged() {
-                if (MediaService.currentLineIndex >= 0) {
-                  scrollTimer.restart();
-                }
-              }
-            }
-          }
-
-          // Тип текста
-          RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 15
-            visible: root.hasValidLyrics
-
-            Item { Layout.fillWidth: true }
-
-            NText {
-              text: MediaService.useSyncedLyrics ? "🎤 синхронизировано" : "📝 текст"
-              pointSize: Style.fontSizeXS
-              color: Color.mOnSurfaceVariant
             }
           }
         }

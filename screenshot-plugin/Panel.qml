@@ -89,8 +89,7 @@ Item {
                         anchors.centerIn: parent
                         icon: buttonRoot.iconName
                         color: Color.mPrimary
-                        width: 24
-                        height: 24
+                        pointSize: 24
                     }
                 }
                 
@@ -124,9 +123,8 @@ Item {
                     NIcon {
                         anchors.centerIn: parent
                         icon: "chevron-right"
-                        color: (mouseArea.containsMouse || isSelected) ? Color.mOnSurface : Color.mSurfaceVariant
-                        width: 16
-                        height: 16
+                        color: Color.mSurfaceVariant
+                        pointSize: 16
                     }
                 }
             }
@@ -159,19 +157,11 @@ Item {
             }
             spacing: Style.marginL
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: Color.mSurfaceVariant
-                radius: 6
-                border.width: Style.borderS
-                border.color: Color.mShadow
-                
                 Column {
                     id: buttonsColumn
                     anchors.fill: parent
                     anchors.margins: Style.marginM
-                    spacing: 4
+                    spacing: 10
                     
                     ActionButton {
                         iconName: "screenshot"
@@ -194,7 +184,6 @@ Item {
                         buttonIndex: 2
                     }
                 }
-            }
         }
     }
     

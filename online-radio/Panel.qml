@@ -129,30 +129,21 @@ Item {
         
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Style.marginM
-            spacing: Style.marginL
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: Color.mSurfaceVariant
-                radius: 6
-                border.width: Style.borderS
-                border.color: Color.mShadow
+            anchors.margins: Style.marginS
 
                 ListView {
                     id: listView
                     anchors.fill: parent
-                    anchors.margins: Style.marginM
+                    anchors.margins: Style.marginS
                     model: pluginApi && pluginApi.mainInstance ? 
                            pluginApi.mainInstance.getStations() : []
-                    spacing: 4
+                    spacing: 10
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     
                     ScrollBar.vertical: ScrollBar {
                         id: scrollBar
-                        policy: ScrollBar.AsNeeded
+                        policy: ScrollBar.AlwaysOff
                     }
 
                     delegate: Item {
@@ -218,8 +209,7 @@ Item {
                                         anchors.centerIn: parent
                                         icon: isStationPlaying(modelData.name) ? "volume" : "radio"
                                         color: Color.mPrimary
-                                        width: 24
-                                        height: 24
+                                        pointSize: 24
                                     }
                                 }
                                 
@@ -265,9 +255,9 @@ Item {
                                     NIcon {
                                         anchors.centerIn: parent
                                         icon: "chevron-right"
-                                        color: (mouseArea.containsMouse || isSelected) ? Color.mOnSurface : Color.mSurfaceVariant
-                                        width: 16
-                                        height: 16
+                                        color: Color.mSurfaceVariant
+                                        pointSize: 16
+
                                     }
                                 }
                             }
@@ -287,8 +277,7 @@ Item {
                             NIcon {
                                 icon: "radio"
                                 color: Color.mOnSurfaceVariant
-                                width: 64
-                                height: 64
+                                pointSize: 24
                                 opacity: 0.5
                                 Layout.alignment: Qt.AlignHCenter
                             }
@@ -312,7 +301,6 @@ Item {
                         }
                     }
                 }
-            }
         }
     }
     
