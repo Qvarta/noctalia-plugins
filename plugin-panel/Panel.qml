@@ -1,61 +1,85 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import Quickshell
 import qs.Commons
 import qs.Widgets
+import qs.Services.UI
 
 Item {
     id: root
     property var pluginApi: null
-    
+
     property real contentPreferredWidth: 360 * Style.uiScaleRatio
     readonly property bool allowAttach: true
-    
-    readonly property int buttonCount: buttonModel.length
+
     readonly property real buttonHeight: 52 * Style.uiScaleRatio
     readonly property real buttonSpacing: 4 * Style.uiScaleRatio
     readonly property real verticalMargins: Style.marginM * Style.uiScaleRatio * 2
+
+    property var buttonModel: []
     
-    property real contentPreferredHeight: (buttonCount * buttonHeight) + 
-                                          ((buttonCount - 1) * buttonSpacing) + 
-                                          2*verticalMargins
-    
+    property real contentPreferredHeight: (buttonModel.length * buttonHeight) + ((buttonModel.length - 1) * buttonSpacing) + 2 * verticalMargins + headerHeight + (20 * Style.uiScaleRatio * 2)
+
     width: contentPreferredWidth
     height: contentPreferredHeight
-    
+
     readonly property var geometryPlaceholder: panelContainer
-    
-    readonly property var buttonModel: [
-        {id: "app-launcher", displayName: "Приложения", icon: "apps"},
-        {id: "online-radio", displayName: "Интернет-радио", icon: "radio"},
-        {id: "screenshot-plugin", displayName: "Скриншот", icon: "camera"},
-        {id: "notes-scratchpad", displayName: "Заметки", icon: "notes"},
-        {id: "torrent-plugin", displayName: "Торренты", icon: "download"},
-        {id: "hyprland-cheatsheet", displayName: "Горячие клавиши", icon: "keyboard"}
-    ]
-    
+
     property int currentIndex: 0
-    
+    readonly property real headerHeight: 52 * Style.uiScaleRatio
+    readonly property real panelMargin: 20 * Style.uiScaleRatio
+
+    function updatePluginsModel() {
+        if (!pluginApi || !pluginApi.mainInstance) {
+            buttonModel = [];
+            return;
+        }
+        
+        var pluginsObj = pluginApi.mainInstance.getPluginsList();
+        
+        if (!pluginsObj) {
+            buttonModel = [];
+            return;
+        }
+        
+        var pluginsList = [];
+        
+        for (var pluginId in pluginsObj) {
+            if (pluginsObj.hasOwnProperty(pluginId)) {
+                var plugin = pluginsObj[pluginId];
+                pluginsList.push({
+                    id: pluginId,
+                    displayName: plugin.name || pluginId,
+                    icon: plugin.icon || "puzzle"
+                });
+            }
+        }
+        
+        buttonModel = pluginsList;
+        
+        if (currentIndex >= buttonModel.length) {
+            currentIndex = Math.max(0, buttonModel.length - 1);
+        }
+    }
+
     function openPlugin(index) {
-        if (index >= 0 && index < buttonCount) {
+        if (index >= 0 && index < buttonModel.length) {
             var main = pluginApi.mainInstance;
             if (main && main.openPluginPanel) {
                 main.openPluginPanel(buttonModel[index].id);
-            } else {
-                Logger.e("Failed to call openPluginPanel function");
             }
         }
     }
-    
+
     function moveSelection(delta) {
         var newIndex = currentIndex + delta;
-        if (newIndex >= 0 && newIndex < buttonCount) {
+        if (newIndex >= 0 && newIndex < buttonModel.length) {
             currentIndex = newIndex;
-            
-            // Ensure the selected item is visible in the flickable
+
             var targetY = currentIndex * (buttonHeight + buttonSpacing);
             var viewportHeight = flickable.height;
-            
+
             if (targetY < flickable.contentY) {
                 flickable.contentY = targetY;
             } else if (targetY + buttonHeight > flickable.contentY + viewportHeight) {
@@ -63,12 +87,12 @@ Item {
             }
         }
     }
-    
+
     Keys.onUpPressed: moveSelection(-1)
     Keys.onDownPressed: moveSelection(1)
     Keys.onReturnPressed: openPlugin(currentIndex)
     Keys.onEnterPressed: openPlugin(currentIndex)
-    
+
     Rectangle {
         id: panelContainer
         anchors.fill: parent
@@ -78,108 +102,266 @@ Item {
         border.width: Style.borderS
         border.color: Color.mOutline
         clip: true
-        
-        Flickable {
-            id: flickable
+
+        Column {
+            id: mainColumn
             anchors.fill: parent
-            anchors.margins: Style.marginM
-            contentWidth: width
-            contentHeight: buttonsColumn.height
-            boundsBehavior: Flickable.StopAtBounds
-            
-            Column {
-                id: buttonsColumn
+            anchors.margins: panelMargin
+            spacing: panelMargin
+
+            Rectangle {
                 width: parent.width
-                spacing: buttonSpacing
+                height: headerHeight
+                color: "transparent"
                 
-                y: Math.max(0, (flickable.height - height) / 2)
-                
-                Repeater {
-                    model: buttonModel
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: Style.marginM
                     
                     Rectangle {
-                        id: buttonContainer
-                        width: buttonsColumn.width
-                        height: buttonHeight
-                        radius: 8
-                        color: "transparent"
+                        width: headerHeight * 0.8
+                        height: headerHeight * 0.8
+                        radius: Style.radiusS
+                        color: Color.mSurfaceVariant
                         
-                        readonly property bool isSelected: index === currentIndex
-                        readonly property bool isHovered: mouseArea.containsMouse
+                        NIcon {
+                            id: puzzleIcon
+                            icon: "puzzle"
+                            anchors.centerIn: parent
+                            pointSize: Style.fontSizeXL * 1.2
+                            color: Color.mPrimary
+                        }
+                    }
+                    
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 2
                         
-                        Behavior on opacity {
-                            NumberAnimation { duration: 150 }
+                        NText {
+                            text: "Плагины"
+                            font.weight: Font.Bold
+                            font.pointSize: Style.fontSizeXL * 1.1
+                            color: Color.mOnSurface
                         }
                         
-                        Rectangle {
-                            id: buttonRect
+                        NText {
+                            text: "Быстрый запуск"
+                            font.pointSize: Style.fontSizeS
+                            color: Color.mOnSurfaceVariant
+                            opacity: 0.8
+                        }
+                    }
+                    
+                    Rectangle {
+                        id: settingsButton
+                        width: Style.baseWidgetSize * 0.9
+                        height: Style.baseWidgetSize * 0.9
+                        radius: 4
+                        color: settingsMouseArea.containsMouse ? Color.mHover : "transparent"
+                        
+                        NIcon {
+                            id: settingsIcon
+                            icon: "settings"
+                            anchors.centerIn: parent
+                            pointSize: Style.fontSizeXL
+                            color: settingsMouseArea.containsMouse ? Color.mOnHover : Color.mPrimary
+                        }
+                        
+                        MouseArea {
+                            id: settingsMouseArea
                             anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            
+                            ToolTip {
+                                text: "Настройки"
+                                visible: settingsMouseArea.containsMouse
+                                delay: 500
+                            }
+                            
+                            onClicked: {
+                                BarService.openPluginSettings(screen, pluginApi.manifest);
+                            }
+                        }
+                    }
+                    
+                    Rectangle {
+                        id: closeButton
+                        width: Style.baseWidgetSize * 0.9
+                        height: Style.baseWidgetSize * 0.9
+                        radius: 4
+                        color: closeMouseArea.containsMouse ? Color.mHover : "transparent"
+                        
+                        NIcon {
+                            id: closeIcon
+                            icon: "close"
+                            anchors.centerIn: parent
+                            pointSize: Style.fontSizeXL
+                            color: closeMouseArea.containsMouse ? Color.mOnHover : Color.mPrimary
+                        }
+                        
+                        MouseArea {
+                            id: closeMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            
+                            ToolTip {
+                                text: "Закрыть"
+                                visible: closeMouseArea.containsMouse
+                                delay: 500
+                            }
+                            
+                            onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+                        }
+                    }
+                }
+            }
+
+            Flickable {
+                id: flickable
+                width: parent.width
+                height: parent.height - headerHeight - panelMargin
+                contentWidth: width
+                contentHeight: buttonsColumn.height
+                boundsBehavior: Flickable.StopAtBounds
+
+                Column {
+                    id: buttonsColumn
+                    width: parent.width
+                    spacing: buttonSpacing
+
+                    y: Math.max(0, (flickable.height - height) / 2)
+
+                    Repeater {
+                        model: buttonModel
+
+                        Rectangle {
+                            id: buttonContainer
+                            width: buttonsColumn.width
+                            height: buttonHeight
                             radius: 8
-                            
-                            color: (mouseArea.containsMouse || isSelected) ? 
-                                   Color.mHover : Color.mSurfaceVariant
-                            
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
+                            color: "transparent"
+                            visible: buttonModel.length > 0
+
+                            readonly property bool isSelected: index === currentIndex
+                            readonly property bool isHovered: mouseArea.containsMouse
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: 150
+                                }
                             }
-                            
-                            MouseArea {
-                                id: mouseArea
+
+                            Rectangle {
+                                id: buttonRect
                                 anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                acceptedButtons: Qt.LeftButton
-                                
-                                onContainsMouseChanged: {
-                                    if (containsMouse) {
+                                radius: 8
+
+                                color: (mouseArea.containsMouse || isSelected) ? Color.mHover : Color.mSurfaceVariant
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 150
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: mouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    acceptedButtons: Qt.LeftButton
+
+                                    onContainsMouseChanged: {
+                                        if (containsMouse) {
+                                            currentIndex = index;
+                                        }
+                                    }
+
+                                    onClicked: {
                                         currentIndex = index;
+                                        root.openPlugin(index);
                                     }
                                 }
-                                
-                                onClicked: {
-                                    currentIndex = index;
-                                    root.openPlugin(index);
+
+                                Row {
+                                    id: buttonRow
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: Style.marginL
+
+                                    NIcon {
+                                        id: buttonIcon
+                                        icon: modelData.icon
+                                        pointSize: 20
+
+                                        color: (mouseArea.containsMouse || isSelected) ? Color.mOnHover : Color.mPrimary
+
+                                        Behavior on color {
+                                            ColorAnimation {
+                                                duration: 150
+                                            }
+                                        }
+
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    NText {
+                                        id: buttonText
+                                        text: modelData.displayName
+                                        font.pointSize: Style.fontSizeXL
+                                        font.weight: Font.Medium
+
+                                        color: (mouseArea.containsMouse || isSelected) ? Color.mOnHover : Color.mPrimary
+
+                                        Behavior on color {
+                                            ColorAnimation {
+                                                duration: 150
+                                            }
+                                        }
+
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: parent.width - buttonIcon.width - 32 - (Style.marginL * 2)
+                                        elide: Text.ElideRight
+                                    }
                                 }
                             }
+                        }
+                    }
+                    
+                    Rectangle {
+                        width: parent.width
+                        height: flickable.height
+                        visible: buttonModel.length === 0
+                        color: "transparent"
+                        
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: Style.marginM
                             
-                            Row {
-                                id: buttonRow
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                spacing: Style.marginL
-                                
-                                NIcon {
-                                    id: buttonIcon
-                                    icon: modelData.icon
-                                    pointSize: 20
-                                    
-                                    color: (mouseArea.containsMouse || isSelected) ? 
-                                           Color.mOnHover : Color.mPrimary
-                                    
-                                    Behavior on color {
-                                        ColorAnimation { duration: 150 }
-                                    }
-                                    
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                                
-                                NText {
-                                    id: buttonText
-                                    text: modelData.displayName
-                                    font.pointSize: Style.fontSizeXL
-                                    font.weight: Font.Medium
-                                    
-                                    color: (mouseArea.containsMouse || isSelected) ? 
-                                           Color.mOnHover : Color.mPrimary
-                                    
-                                    Behavior on color {
-                                        ColorAnimation { duration: 150 }
-                                    }
-                                    
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width - buttonIcon.width - 32 - (Style.marginL * 2)
-                                    elide: Text.ElideRight
-                                }
+                            NIcon {
+                                icon: "puzzle"
+                                color: Color.mOnSurfaceVariant
+                                pointSize: 48
+                                opacity: 0.5
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                            
+                            NText {
+                                text: "Нет доступных плагинов"
+                                color: Color.mOnSurfaceVariant
+                                font.pointSize: Style.fontSizeM
+                                font.weight: Font.Medium
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                            
+                            NText {
+                                text: "Нажмите на иконку настроек чтобы добавить"
+                                color: Color.mOnSurfaceVariant
+                                font.pointSize: Style.fontSizeS
+                                opacity: 0.7
+                                anchors.horizontalCenter: parent.horizontalCenter
                             }
                         }
                     }
@@ -188,7 +370,23 @@ Item {
         }
     }
     
+    Connections {
+        target: pluginApi ? pluginApi.pluginSettings : null
+        enabled: pluginApi !== null
+        
+        function onPluginsChanged() {
+            updatePluginsModel();
+        }
+    }
+    
+    onPluginApiChanged: {
+        if (pluginApi) {
+            updatePluginsModel();
+        }
+    }
+
     Component.onCompleted: {
+        updatePluginsModel();
         forceActiveFocus();
     }
 }

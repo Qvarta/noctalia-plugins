@@ -20,6 +20,13 @@ Item {
     }
   }
 
+  function getPluginsList() {
+    if (pluginApi && pluginApi.pluginSettings && pluginApi.pluginSettings.plugins) {
+      return pluginApi.pluginSettings.plugins;
+    }
+    return {};
+  }
+
   function openPluginPanel(modelData) {
 
     if (pluginApi && pluginApi.closePanel) {
