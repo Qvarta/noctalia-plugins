@@ -1,6 +1,6 @@
 # Plugins Panel for Noctalia Shell
 
-<img width="380" height="392" alt="1" src="https://github.com/user-attachments/assets/b811ba18-8773-482f-960c-8576f5411051" />
+<img width="380" height="465" alt="7" src="https://github.com/user-attachments/assets/0b38a19e-2e34-49fa-be71-13609d96ae47" />
 
 ## Components
 
