@@ -35,11 +35,11 @@
         },
         {
           "keys": "Super + E",
-          "desc": "Файлы"
+          "desc": "Файловый менеджер"
         },
         {
           "keys": "Alt + V",
-          "desc": "VSCodium"
+          "desc": "Редактор кода"
         },
         {
           "keys": "F12",
@@ -48,6 +48,10 @@
         {
           "keys": "Super + B",
           "desc": "Браузер"
+        },
+        {
+          "keys": "Super + M",
+          "desc": "Музыка"
         }
       ]
     },
@@ -76,7 +80,7 @@
       "title": "Окна",
       "binds": [
         {
-          "keys": "F2",
+          "keys": "Super + F1",
           "desc": "Полный экран"
         },
         {

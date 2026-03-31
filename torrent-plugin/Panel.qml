@@ -206,7 +206,6 @@ Item {
                 Layout.fillHeight: true
                 spacing: 4
                 
-                // Название и процент в одной строке
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8

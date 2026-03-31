@@ -9,7 +9,6 @@ Item {
     property var pluginApi: null
     property ShellScreen screen
     
-    // Свойства для работы с приложениями
     property var allApps: []
     property var favoriteApps: []
     property string searchQuery: ""
@@ -87,9 +86,13 @@ Item {
             allApps = getAllApps();
         }
         loadFavoriteApps();
-        showAllAppsMode = false; // Сбрасываем режим при открытии
-        selectedIndex = 0;
+        showAllAppsMode = false; 
         searchQuery = "";
+        selectedIndex = 0;
+        
+        if (typeof Logger !== 'undefined') {
+            Logger.i("Панель инициализирована: режим=избранное, поиск пуст");
+        }
     }
     
     function loadFavoriteApps() {
@@ -353,6 +356,9 @@ Item {
         
         function toggle() {
             if (pluginApi) {
+                searchQuery = "";
+                showAllAppsMode = false;
+                selectedIndex = 0;
                 pluginApi.withCurrentScreen(screen => {
                     pluginApi.openPanel(screen, this);
                 });

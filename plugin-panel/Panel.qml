@@ -8,7 +8,7 @@ Item {
     id: root
     property var pluginApi: null
     
-    property real contentPreferredWidth: 260 * Style.uiScaleRatio
+    property real contentPreferredWidth: 360 * Style.uiScaleRatio
     readonly property bool allowAttach: true
     
     readonly property int buttonCount: buttonModel.length
@@ -18,7 +18,7 @@ Item {
     
     property real contentPreferredHeight: (buttonCount * buttonHeight) + 
                                           ((buttonCount - 1) * buttonSpacing) + 
-                                          verticalMargins
+                                          2*verticalMargins
     
     width: contentPreferredWidth
     height: contentPreferredHeight
@@ -72,107 +72,120 @@ Item {
     Rectangle {
         id: panelContainer
         anchors.fill: parent
+        anchors.margins: Style.marginS
         color: Color.mSurface
         radius: Style.radiusM
+        border.width: Style.borderS
+        border.color: Color.mOutline
+        clip: true
         
-            Flickable {
-                id: flickable
-                anchors.fill: parent
-                anchors.margins: Style.marginM
-                contentWidth: width
-                contentHeight: buttonsColumn.height
-                boundsBehavior: Flickable.StopAtBounds
+        Flickable {
+            id: flickable
+            anchors.fill: parent
+            anchors.margins: Style.marginM
+            contentWidth: width
+            contentHeight: buttonsColumn.height
+            boundsBehavior: Flickable.StopAtBounds
+            
+            Column {
+                id: buttonsColumn
+                width: parent.width
+                spacing: buttonSpacing
                 
-                Column {
-                    id: buttonsColumn
-                    width: parent.width
-                    spacing: 4
+                y: Math.max(0, (flickable.height - height) / 2)
+                
+                Repeater {
+                    model: buttonModel
                     
-                    Repeater {
-                        model: buttonModel
+                    Rectangle {
+                        id: buttonContainer
+                        width: buttonsColumn.width
+                        height: buttonHeight
+                        radius: 8
+                        color: "transparent"
                         
-                        Item {
-                            id: buttonContainer
-                            width: buttonsColumn.width
-                            height: 52
+                        readonly property bool isSelected: index === currentIndex
+                        readonly property bool isHovered: mouseArea.containsMouse
+                        
+                        Behavior on opacity {
+                            NumberAnimation { duration: 150 }
+                        }
+                        
+                        Rectangle {
+                            id: buttonRect
+                            anchors.fill: parent
+                            radius: 8
                             
-                            readonly property bool isSelected: index === currentIndex
+                            color: (mouseArea.containsMouse || isSelected) ? 
+                                   Color.mHover : Color.mSurfaceVariant
                             
-                            Rectangle {
-                                id: buttonRect
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+                            
+                            MouseArea {
+                                id: mouseArea
                                 anchors.fill: parent
-                                radius: 6
-                                border.width: Style.borderS
-                                border.color: Color.mOutline
-                                color: (mouseArea.containsMouse || isSelected) ? 
-                                       Color.mHover : Color.mSurfaceVariant
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton
                                 
-                                MouseArea {
-                                    id: mouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    acceptedButtons: Qt.LeftButton
-                                    
-                                    onClicked: {
+                                onContainsMouseChanged: {
+                                    if (containsMouse) {
                                         currentIndex = index;
-                                        root.openPlugin(index);
                                     }
                                 }
                                 
-                                Row {
-                                    id: buttonRow
-                                    anchors.fill: parent
-                                    anchors.margins: Style.marginM
-                                    spacing: Style.marginM
+                                onClicked: {
+                                    currentIndex = index;
+                                    root.openPlugin(index);
+                                }
+                            }
+                            
+                            Row {
+                                id: buttonRow
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: Style.marginL
+                                
+                                NIcon {
+                                    id: buttonIcon
+                                    icon: modelData.icon
+                                    pointSize: 20
                                     
-                                    Rectangle {
-                                        width: 40
-                                        height: 40
-                                        radius: 8
-                                        color: Color.mOutline
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        
-                                        NIcon {
-                                            anchors.centerIn: parent
-                                            icon: modelData.icon
-                                            color: Color.mPrimary
-                                            pointSize: 24
-                                        }
+                                    color: (mouseArea.containsMouse || isSelected) ? 
+                                           Color.mOnHover : Color.mPrimary
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
                                     }
                                     
-                                    NText {
-                                        text: modelData.displayName
-                                        font.pointSize: Style.fontSizeS
-                                        font.weight: (mouseArea.containsMouse || isSelected) ? 
-                                                    Font.Bold : Font.Normal
-                                        color: (mouseArea.containsMouse || isSelected) ? 
-                                               Color.mOnSecondary : Color.mOnSurface
-                                        elide: Text.ElideRight
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: parent.width - 40 - 32 - (Style.marginM * 2)
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                
+                                NText {
+                                    id: buttonText
+                                    text: modelData.displayName
+                                    font.pointSize: Style.fontSizeXL
+                                    font.weight: Font.Medium
+                                    
+                                    color: (mouseArea.containsMouse || isSelected) ? 
+                                           Color.mOnHover : Color.mPrimary
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
                                     }
                                     
-                                    Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: 16
-                                        color: "transparent"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        
-                                        NIcon {
-                                            anchors.centerIn: parent
-                                            icon: "chevron-right"
-                                            color: Color.mSurfaceVariant
-                                            pointSize: 16
-                                        }
-                                    }
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - buttonIcon.width - 32 - (Style.marginL * 2)
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
                     }
                 }
             }
+        }
     }
     
     Component.onCompleted: {

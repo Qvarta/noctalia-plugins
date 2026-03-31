@@ -29,7 +29,7 @@ Item {
 
   IpcHandler {
     target: "plugin:notes-scratchpad"
-    function togglePanel() { 
+    function toggle() { 
       pluginApi?.withCurrentScreen(s => pluginApi.togglePanel(s)) 
     }
   }

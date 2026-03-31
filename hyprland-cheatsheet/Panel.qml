@@ -10,9 +10,6 @@ Item {
     property var rawCategories: pluginApi?.pluginSettings?.cheatsheetData || []
     property var categories: rawCategories
 
-    // readonly property var geometryPlaceholder: panelContainer
-    // readonly property bool panelAnchorHorizontalCenter: true
-    // readonly property bool panelAnchorVerticalCenter: true
     readonly property bool allowAttach: true 
 
     property var categoryExpanded: ({})
@@ -66,7 +63,7 @@ Item {
             var expanded = categoryExpanded[index] || false;
             if (expanded) {
                 var bindsHeight = getBindsHeight(index);
-                return 50 + bindsHeight + 12; // header height + binds column height + margin
+                return 50 + bindsHeight + 12; 
             } else {
                 return 50;
             }
@@ -78,7 +75,7 @@ Item {
         if (index >= 0 && index < categories.length) {
             var category = categories[index];
             if (category && category.binds) {
-                return category.binds.length * 28; // each bind item height 28
+                return category.binds.length * 28; 
             }
         }
         return 0;
@@ -238,7 +235,6 @@ Item {
                                         icon: pluginApi?.mainInstance?.getCategoryIcon(modelData.title)
                                         pointSize: 20
                                         
-                                        // Анимированное изменение цвета иконки при ховере или expanded
                                         color: (mouseArea.containsMouse || isSelected) ? 
                                                Color.mOnHover : (expanded ? Color.mOnHover : Color.mPrimary)
                                         
@@ -255,7 +251,6 @@ Item {
                                         font.pointSize: Style.fontSizeXL
                                         font.weight: Font.Medium
                                         
-                                        // Анимированное изменение цвета текста при ховере или expanded
                                         color: (mouseArea.containsMouse || isSelected) ? 
                                                Color.mOnHover : (expanded ? Color.mOnHover : Color.mPrimary)
                                         

@@ -441,7 +441,6 @@ Item {
             var jsonData = JSON.parse(output);
             var torrents = null;
             
-            // Проверяем формат JSON от transmission-remote -j -l
             if (jsonData.result && jsonData.result.torrents) {
                 torrents = jsonData.result.torrents;
             } 
@@ -468,7 +467,6 @@ Item {
                 smoothUpdateModel(foundTorrents);
             }
         } catch (error) {
-            // Обработка ошибок без логирования
         }
     }
     
@@ -480,7 +478,6 @@ Item {
             
             var percent = 0;
             
-            // Пробуем разные варианты полей
             if (torrent.size_when_done && torrent.size_when_done > 0) {
                 var leftUntilDone = torrent.left_until_done !== undefined ? torrent.left_until_done : torrent.leftUntilDone;
                 var downloaded = torrent.size_when_done - (leftUntilDone || 0);
@@ -497,7 +494,6 @@ Item {
             if (torrent.status !== undefined) {
                 status = parseJsonStatus(torrent.status);
                 
-                // Проверяем завершенность
                 var isFinished = torrent.is_finished !== undefined ? torrent.is_finished : torrent.isFinished;
                 if (isFinished && status === "idle") {
                     status = "completed";

@@ -8,13 +8,6 @@
       "isFavorite": true
     },
     {
-      "id": "DRG Survivor",
-      "name": "DRG Survivor",
-      "icon": "/home/ko/PortProton/data/img/DRG_Survivor.png",
-      "comment": "",
-      "isFavorite": true
-    },
-    {
       "id": "work",
       "name": "Work",
       "icon": "/home/ko/.local/share/applications/11.png",
@@ -33,6 +26,20 @@
       "name": "Slay The Spire 2",
       "icon": "/home/ko/PortProton/data/img/SlayTheSpire2.png",
       "comment": "",
+      "isFavorite": true
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "icon": "spotify-client",
+      "comment": "",
+      "isFavorite": true
+    },
+    {
+      "id": "gimp",
+      "name": "GNU Image Manipulation Program",
+      "icon": "gimp",
+      "comment": "Создание изображений и редактирование фотографий",
       "isFavorite": true
     }
   ]

@@ -1,0 +1,21 @@
+{
+  "id": "qml-help",
+  "name": "Basic QML elements",
+  "version": "0.0.1",
+  "minNoctaliaVersion": "3.6.0",
+  "author": "Qvarta",
+  "license": "MIT",
+  "description": "Basic QML elements.",
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "panel": "Panel.qml"
+  },
+  "dependencies": {
+    "plugins": []
+  },
+  "metadata": {
+    "defaultSettings": {
+      "parsedData": [] 
+    }
+  }
+}

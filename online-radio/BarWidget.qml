@@ -51,7 +51,6 @@ Item {
         }
     }
 
-    // Сохраняем позицию текста
     property real savedX: 0
 
     // Основной контейнер
@@ -184,15 +183,15 @@ Item {
         id: contextMenu
 
         model: [
+                        {
+                "label": pluginApi?.tr("stop"),
+                "action": "stop",
+                "icon": "stop"
+            },
             {
                 "label": I18n.tr("actions.widget-settings"),
                 "action": "widget-settings",
                 "icon": "settings"
-            },
-            {
-                "label": pluginApi?.tr("stop"),
-                "action": "stop",
-                "icon": "stop"
             }
         ]
 

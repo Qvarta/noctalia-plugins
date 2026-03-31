@@ -10,9 +10,18 @@ Item {
     property var pluginApi: null
     
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 280 * Style.uiScaleRatio
-    property real contentPreferredHeight: 420 * Style.uiScaleRatio
+    property real contentPreferredWidth: 360 * Style.uiScaleRatio
+    property real contentPreferredHeight: 480 * Style.uiScaleRatio
     readonly property bool allowAttach: true
+    
+    function getSafeIcon(iconName) {
+        if (!iconName) return "apps";
+        var knownIcons = ["apps", "star", "search", "search-off", "player-play", "star-filled", "camera", "radio", "notes", "download", "keyboard", "chevron-right"];
+        if (knownIcons.indexOf(iconName) !== -1) {
+            return iconName;
+        }
+        return "apps";
+    }
     
     function isValidApi() {
         return pluginApi && pluginApi.mainInstance && typeof pluginApi.mainInstance.getFilteredApps === 'function';
@@ -222,11 +231,37 @@ Item {
             anchors.margins: Style.marginM
             spacing: Style.marginL
 
+            NTextInput {
+                id: searchInput
+                placeholderText: "Поиск приложений..."
+                inputIconName: "search"
+                radius: Style.radiusM       
+                Keys.onReturnPressed: {
+                    launchCurrentApp();
+                }
+                
+                onTextChanged: {
+                    if (isValidApi()) {
+                        pluginApi.mainInstance.searchQuery = text;
+                        pluginApi.mainInstance.selectedIndex = 0;
+                        ensureVisible(0);
+                        if (appListView.contentHeight > appListView.height) {
+                            appListView.positionViewAtBeginning();
+                        }
+                    }
+                }
+                
+                onActiveFocusChanged: {
+                    if (!activeFocus) {
+                        root.forceActiveFocus();
+                    }
+                }
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: Color.mSurfaceVariant
-                radius: 6
+                color: "transparent"
                 border.width: Style.borderS
                 border.color: Color.mShadow
 
@@ -253,7 +288,7 @@ Item {
                         Rectangle {
                             id: delegateRect
                             anchors.fill: parent
-                            radius: 6       
+                            radius: 8
                             border.width: Style.borderS
                             border.color: Color.mOutline
                             color: {
@@ -263,7 +298,7 @@ Item {
                                     } else {
                                         return Color.mSurfaceVariant;
                                     }
-                                } else if (isSelected) {
+                                } else if (isSelected || delegateMouseArea.containsMouse) {
                                     return Color.mPrimary;
                                 } else {
                                     return Color.mSurfaceVariant;
@@ -302,33 +337,59 @@ Item {
                                 spacing: Style.marginM
                                 
                                 Rectangle {
-                                    width: 40
+                                    width: 40  
                                     height: 40
                                     radius: 8
-                                    color: Color.mOutline
-                                    
-                                    NIcon {
-                                        anchors.centerIn: parent
-                                        icon: isShowAllButton ? "apps" : (isShowFavoritesButton ? "star" : "apps")
-                                        color: Color.mPrimary
-                                        width: 24
-                                        height: 24
-                                        visible: isNavButton || !modelData.icon
-                                    }
+                                    color: 'transparent'
                                     
                                     Image {
+                                        id: appIcon
                                         anchors.fill: parent
                                         anchors.margins: 4
                                         fillMode: Image.PreserveAspectFit
                                         source: {
-                                            if (!modelData.icon) return "";
-                                            if (modelData.icon.includes("/")) {
-                                                return "file://" + modelData.icon;
+                                            if (isNavButton) {
+                                                return "";
                                             }
-                                            return "image://icon/" + modelData.icon;
+                                            if (modelData.icon && modelData.icon !== "") {
+                                                if (modelData.icon.includes("/")) {
+                                                    return "file://" + modelData.icon;
+                                                }
+                                                return "image://icon/" + modelData.icon;
+                                            }
+                                            return "";
                                         }
                                         asynchronous: true
-                                        visible: !isNavButton && status === Image.Ready
+                                        visible: !isNavButton && status === Image.Ready && source !== ""
+                                    }
+                                    
+                                    NIcon {
+                                        anchors.centerIn: parent
+                                        icon: {
+                                            if (isShowAllButton) return "apps";
+                                            if (isShowFavoritesButton) return "star";
+                                            if (!modelData.icon || modelData.icon === "") return "apps";
+                                            return getSafeIcon("apps");
+                                        }
+                                        color: {
+                                            if (isNavButton) {
+                                                if (delegateMouseArea.containsMouse || isSelected) {
+                                                    return Color.mOnSecondary;
+                                                } else {
+                                                    return Color.mOnSurface;
+                                                }
+                                            } else if (isSelected || delegateMouseArea.containsMouse) {
+                                                return Color.mOnPrimary;
+                                            } else {
+                                                return Color.mOnSurface;
+                                            }
+                                        }
+                                        pointSize: 28
+                                        visible: {
+                                            if (isNavButton) return true;
+                                            if (!modelData.icon || modelData.icon === "") return true;
+                                            return appIcon.status !== Image.Ready || appIcon.source === "";
+                                        }
                                     }
                                 }
                                 
@@ -345,43 +406,28 @@ Item {
                                             } else {
                                                 return Color.mOnSurface;
                                             }
-                                        } else if (isSelected) {
+                                        } else if (isSelected || delegateMouseArea.containsMouse) {
                                             return Color.mOnPrimary;
                                         } else {
-                                            return Color.mOnSurface;
+                                            return Color.mPrimary;
                                         }
                                     }
-                                    font.pointSize: Style.fontSizeS
+                                    font.pointSize: Style.fontSizeL
                                     font.weight: {
                                         if (isNavButton) {
                                             if (delegateMouseArea.containsMouse || isSelected) {
                                                 return Font.Bold;
                                             } else {
-                                                return Font.Normal;
+                                                return Font.Medium;
                                             }
-                                        } else if (isSelected) {
+                                        } else if (isSelected || delegateMouseArea.containsMouse) {
                                             return Font.Bold;
                                         } else {
-                                            return Font.Normal;
+                                            return Font.Medium;
                                         }
                                     }
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
-                                }
-                                
-                                Rectangle {
-                                    width: 32
-                                    height: 32
-                                    radius: 16
-                                    color: isSelected ? Color.mSurface : "transparent"
-                                    
-                                    NIcon {
-                                        anchors.centerIn: parent
-                                        icon: "chevron-right"
-                                        color: isSelected ? Color.mOnSurface : "transparent"
-                                        width: 16
-                                        height: 16
-                                    }
                                 }
                             }
                         }
@@ -403,7 +449,7 @@ Item {
                         spacing: Style.marginM
                         
                         NIcon {
-                            icon: getEmptyStateIcon()
+                            icon: getSafeIcon(getEmptyStateIcon())
                             color: Color.mOnSurfaceVariant
                             width: 64
                             height: 64
@@ -427,34 +473,6 @@ Item {
                             Layout.alignment: Qt.AlignHCenter
                             horizontalAlignment: Text.AlignHCenter
                         }
-                    }
-                }
-            }
-            
-            NTextInput {
-                id: searchInput
-                Layout.fillWidth: true
-                placeholderText: "Поиск приложений..."
-                inputIconName: "search"
-                radius: 6       
-                Keys.onReturnPressed: {
-                    launchCurrentApp();
-                }
-                
-                onTextChanged: {
-                    if (isValidApi()) {
-                        pluginApi.mainInstance.searchQuery = text;
-                        pluginApi.mainInstance.selectedIndex = 0;
-                        ensureVisible(0);
-                        if (appListView.contentHeight > appListView.height) {
-                            appListView.positionViewAtBeginning();
-                        }
-                    }
-                }
-                
-                onActiveFocusChanged: {
-                    if (!activeFocus) {
-                        root.forceActiveFocus();
                     }
                 }
             }

@@ -8,7 +8,7 @@ Item {
     property var pluginApi: null
     
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 250 * Style.uiScaleRatio
+    property real contentPreferredWidth: 340 * Style.uiScaleRatio
     property real contentPreferredHeight: 200 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
@@ -56,76 +56,62 @@ Item {
         property int buttonIndex: -1
         property var mouseArea: mouseArea
         readonly property bool isSelected: buttonIndex === currentIndex
+        readonly property bool isHovered: mouseArea.containsMouse
         
         width: parent.width
         height: 52
         
+        Behavior on opacity {
+            NumberAnimation { duration: 150 }
+        }
+        
         Rectangle {
             id: buttonRect
             anchors.fill: parent
-            radius: 6       
-            border.width: Style.borderS
-            border.color: Color.mOutline
-            color: {
-                if (mouseArea.containsMouse || isSelected) {
-                    return Color.mHover;
-                } else {
-                    return Color.mSurfaceVariant;
-                }
+            radius: 8
+            
+            color: (mouseArea.containsMouse || isSelected) ? 
+                Color.mHover : Color.mSurfaceVariant
+            
+            Behavior on color {
+                ColorAnimation { duration: 150 }
             }
             
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: Style.marginM
-                spacing: Style.marginM
+                anchors.margins: 12
+                spacing: Style.marginL
                 
-                Rectangle {
-                    width: 40
-                    height: 40
-                    radius: 8
-                    color: Color.mOutline
+                NIcon {
+                    id: buttonIcon
+                    icon: buttonRoot.iconName
+                    pointSize: 20
                     
-                    NIcon {
-                        anchors.centerIn: parent
-                        icon: buttonRoot.iconName
-                        color: Color.mPrimary
-                        pointSize: 24
+                    color: (mouseArea.containsMouse || isSelected) ? 
+                        Color.mOnHover : Color.mPrimary
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
                     }
+                    
+                    Layout.alignment: Qt.AlignVCenter
                 }
                 
                 NText {
                     text: buttonRoot.text
-                    color: {
-                        if (mouseArea.containsMouse || isSelected) {
-                            return Color.mOnSecondary;
-                        } else {
-                            return Color.mOnSurface;
-                        }
+                    font.pointSize: Style.fontSizeXL
+                    font.weight: Font.Medium
+                    
+                    color: (mouseArea.containsMouse || isSelected) ? 
+                        Color.mOnHover : Color.mPrimary
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
                     }
-                    font.pointSize: Style.fontSizeS
-                    font.weight: {
-                        if (mouseArea.containsMouse || isSelected) {
-                            return Font.Bold;
-                        } else {
-                            return Font.Normal;
-                        }
-                    }
+                    
                     elide: Text.ElideRight
                     Layout.fillWidth: true
-                }
-                
-                Rectangle {
-                    width: 32
-                    height: 32
-                    radius: 16
-                    color: "transparent"
-                    
-                    NIcon {
-                        anchors.centerIn: parent
-                        icon: "chevron-right"
-                        color: Color.mSurfaceVariant
-                        pointSize: 16
-                    }
+                    Layout.alignment: Qt.AlignVCenter
                 }
             }
             
@@ -135,6 +121,12 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton
+                
+                onContainsMouseChanged: {
+                    if (containsMouse) {
+                        currentIndex = buttonIndex;
+                    }
+                }
                 
                 onClicked: {
                     currentIndex = buttonIndex;
@@ -147,8 +139,12 @@ Item {
     Rectangle {
         id: panelContainer
         anchors.fill: parent
+        anchors.margins: Style.marginS
         color: Color.mSurface
         radius: Style.radiusM
+        border.width: Style.borderS
+        border.color: Color.mOutline
+        clip: true
         
         ColumnLayout {
             anchors {
@@ -157,33 +153,34 @@ Item {
             }
             spacing: Style.marginL
 
-                Column {
-                    id: buttonsColumn
-                    anchors.fill: parent
-                    anchors.margins: Style.marginM
-                    spacing: 10
-                    
-                    ActionButton {
-                        iconName: "screenshot"
-                        text: pluginApi?.tr("windowLabel") || "Весь экран"
-                        actionType: "output"
-                        buttonIndex: 0
-                    }
-                    
-                    ActionButton {
-                        iconName: "crop"
-                        text: pluginApi?.tr("areaLabel") || "Область"
-                        actionType: "region"
-                        buttonIndex: 1
-                    }
-                    
-                    ActionButton {
-                        iconName: "zoom-in-area"
-                        text: pluginApi?.tr("activeWindowLabel") || "Активное окно"
-                        actionType: "window"
-                        buttonIndex: 2
-                    }
+            Column {
+                id: buttonsColumn
+                width: parent.width
+                spacing: 4
+                
+                y: Math.max(0, (parent.height - height) / 2)
+                
+                ActionButton {
+                    iconName: "screenshot"
+                    text: pluginApi?.tr("windowLabel") || "Весь экран"
+                    actionType: "output"
+                    buttonIndex: 0
                 }
+                
+                ActionButton {
+                    iconName: "crop"
+                    text: pluginApi?.tr("areaLabel") || "Область"
+                    actionType: "region"
+                    buttonIndex: 1
+                }
+                
+                ActionButton {
+                    iconName: "zoom-in-area"
+                    text: pluginApi?.tr("activeWindowLabel") || "Активное окно"
+                    actionType: "window"
+                    buttonIndex: 2
+                }
+            }
         }
     }
     
