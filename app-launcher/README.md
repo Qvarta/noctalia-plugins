@@ -1,6 +1,6 @@
 # App Launcher plugin for Noctalia Shell
 
-<img width="327" height="482" alt="preview_1" src="https://github.com/user-attachments/assets/95a4666b-3438-4eed-9e68-a949edc4b3b1" />
+<img width="402" height="502" alt="5" src="https://github.com/user-attachments/assets/9e356389-5a45-415c-bae3-b2d039414416" />
 
 ## Components
 
