@@ -1,6 +1,6 @@
 # Online Radio Plugin
 
-A plugin for Noctalia Shell that provides online radio streaming functionality directly from the system bar.
+<img width="852" height="424" alt="2" src="https://github.com/user-attachments/assets/0dd4b287-2626-4b3e-b296-0fa1a5802886" />
 
 ## Dependencies
 
