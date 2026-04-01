@@ -1,6 +1,6 @@
 # Screenshot Plugin for Noctalia Shell
 
-<img width="371" height="222" alt="3" src="https://github.com/user-attachments/assets/88f57812-b8e1-4c8e-9d6e-dd8384a79be9" />
+<img width="371" height="222" alt="10" src="https://github.com/user-attachments/assets/a17c50d9-a6da-4565-8fd3-ec949abaa24d" />
 
 ## Components
 
