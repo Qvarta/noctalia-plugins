@@ -2,6 +2,8 @@
 
 A plugin for Noctalia Shell that provides online radio streaming functionality directly from the system bar.
 
+<img width="612" height="421" alt="8" src="https://github.com/user-attachments/assets/c03de3d8-7db1-4842-b5f6-6f17c6f9040c" />
+
 ## Dependencies
 
 - **VLC Media Player**: Required for audio streaming playback. Install with:
