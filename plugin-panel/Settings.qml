@@ -77,7 +77,10 @@ ColumnLayout {
                     id: delegateRoot
                     width: listView.width
                     height: 70
-
+                    property var rootSettings: root  
+                    property var currentModelData: modelData  
+                    property int currentIndex: index 
+                    
                     // Основной элемент
                     Rectangle {
                         id: delegateRect
@@ -88,65 +91,13 @@ ColumnLayout {
                         border.width: Style.borderS
                         opacity: dragArea.drag.active ? 0.5 : 1.0
 
-                        RowLayout {
+                        PluginItemContent {
                             anchors.fill: parent
                             anchors.margins: Style.marginM
-                            spacing: Style.marginM
-
-                            Rectangle {
-                                width: 40
-                                height: 40
-                                radius: 4
-                                color: Color.mOutline
-
-                                NIcon {
-                                    anchors.centerIn: parent
-                                    icon: modelData.data.icon || "puzzle"
-                                    color: Color.mPrimary
-                                    pointSize: 24
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: Style.marginXS
-
-                                NText {
-                                    id: modelName
-                                    Layout.fillWidth: true
-                                    text: modelData.data.name || "Без названия"
-                                    color: Color.mOnSurface
-                                    font.pointSize: Style.fontSizeM
-                                    font.weight: Font.Medium
-                                    elide: Text.ElideRight
-                                }
-
-                                NText {
-                                    Layout.fillWidth: true
-                                    text: modelData.data.id || modelData.id
-                                    color: Color.mOnSurfaceVariant
-                                    font.pointSize: Style.fontSizeXS
-                                    opacity: 0.7
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            // NIconButton {
-                            //     icon: "trash"
-                            //     tooltipText: "Удалить плагин"
-                            //     baseSize: 32
-                            //     onClicked: {
-                            //         if (pluginApi && pluginApi.mainInstance) {
-                            //             pluginApi.mainInstance.deletePlugin(modelData.id);
-                            //             if (root.pluginId === modelData.id) {
-                            //                 root.pluginName = "";
-                            //                 root.pluginId = "";
-                            //                 root.pluginIcon = "puzzle";
-                            //                 root.pluginOrder = 0;
-                            //             }
-                            //         }
-                            //     }
-                            // }
+                            pluginData: delegateRoot.currentModelData.data
+                            iconBgColor: Color.mOutline
+                            iconColor: Color.mPrimary
+                            textColor: Color.mOnSurface
                         }
 
                         MouseArea {
@@ -157,32 +108,29 @@ ColumnLayout {
                             hoverEnabled: true
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                            onEntered: TooltipService.show(modelName, "ПКМ - удалить")
+                            onEntered: {
+                                var pluginName = delegateRoot.currentModelData.data.name || "Без названия";
+                                TooltipService.show(dragArea, "ПКМ - удалить " + pluginName);
+                            }
                             onExited: TooltipService.hide()
 
-                            onClicked: mouse => {
+                            onPressed: function(mouse) {
                                 if (mouse.button === Qt.RightButton) {
                                     if (pluginApi && pluginApi.mainInstance) {
-                                        pluginApi.mainInstance.deletePlugin(modelData.id);
-                                        if (root.pluginId === modelData.id) {
-                                            root.pluginName = "";
-                                            root.pluginId = "";
-                                            root.pluginIcon = "puzzle";
-                                            root.pluginOrder = 0;
+                                        pluginApi.mainInstance.deletePlugin(delegateRoot.currentModelData.id);
+                                        if (delegateRoot.rootSettings.pluginId === delegateRoot.currentModelData.id) {
+                                            delegateRoot.rootSettings.pluginName = "";
+                                            delegateRoot.rootSettings.pluginId = "";
+                                            delegateRoot.rootSettings.pluginIcon = "puzzle";
+                                            delegateRoot.rootSettings.pluginOrder = 0;
                                         }
                                     }
-                                    mouse.accepted = true;
-                                }
-                            }
-
-                            onPressed: mouse => {
-                                if (mouse.button === Qt.RightButton) {
                                     mouse.accepted = true;
                                     return;
                                 }
 
                                 delegateRoot.z = 2;
-                                dragItem.startDrag(modelData.id, index);
+                                dragItem.startDrag(delegateRoot.currentModelData.id, delegateRoot.currentIndex);
                                 dragItem.x = 0;
                                 dragItem.y = 0;
                                 dragItem.width = delegateRect.width;
@@ -191,13 +139,13 @@ ColumnLayout {
                                 dragItem.dragActive = true;
                             }
 
-                            onReleased: {
+                            onReleased: function() {
                                 if (dragItem.dragActive) {
                                     var dropIndex = Math.floor((dragItem.y + dragItem.height / 2) / delegateRect.height);
                                     dropIndex = Math.max(0, Math.min(listView.count - 1, dropIndex));
 
-                                    if (dropIndex !== index && pluginApi && pluginApi.mainInstance) {
-                                        pluginApi.mainInstance.movePlugin(modelData.id, dropIndex);
+                                    if (dropIndex !== delegateRoot.currentIndex && pluginApi && pluginApi.mainInstance) {
+                                        pluginApi.mainInstance.movePlugin(delegateRoot.currentModelData.id, dropIndex);
                                     }
                                 }
                                 delegateRoot.z = 0;
@@ -229,48 +177,15 @@ ColumnLayout {
                             originalIndex = idx;
                         }
 
-                        RowLayout {
+                        PluginItemContent {
                             anchors.fill: parent
                             anchors.margins: Style.marginM
-                            spacing: Style.marginM
-
-                            Rectangle {
-                                width: 40
-                                height: 40
-                                radius: 20
-                                color: Color.mPrimary
-                                opacity: 0.3
-
-                                NIcon {
-                                    anchors.centerIn: parent
-                                    icon: modelData.data.icon || "puzzle"
-                                    color: Color.mPrimary
-                                    pointSize: 24
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: Style.marginXS
-
-                                NText {
-                                    Layout.fillWidth: true
-                                    text: modelData.data.name || "Без названия"
-                                    color: Color.mPrimary
-                                    font.pointSize: Style.fontSizeM
-                                    font.weight: Font.Medium
-                                    elide: Text.ElideRight
-                                }
-
-                                NText {
-                                    Layout.fillWidth: true
-                                    text: modelData.data.id || modelData.id
-                                    color: Color.mPrimary
-                                    font.pointSize: Style.fontSizeXS
-                                    opacity: 0.8
-                                    elide: Text.ElideRight
-                                }
-                            }
+                            pluginData: delegateRoot.currentModelData.data
+                            iconBgColor: Color.mPrimary
+                            iconColor: Color.mPrimary
+                            textColor: Color.mPrimary
+                            iconRadius: 20
+                            iconOpacity: 0.3
                         }
 
                         states: State {
@@ -283,36 +198,6 @@ ColumnLayout {
                                 target: dragItem
                                 anchors.horizontalCenter: undefined
                                 anchors.verticalCenter: undefined
-                            }
-                        }
-
-                        onXChanged: {
-                            if (dragActive) {
-                                updateDropIndicator();
-                            }
-                        }
-
-                        onYChanged: {
-                            if (dragActive) {
-                                updateDropIndicator();
-                            }
-                        }
-
-                        function updateDropIndicator() {
-                            var currentIndex = Math.floor((dragItem.y + dragItem.height / 2) / delegateRect.height);
-                            currentIndex = Math.max(0, Math.min(listView.count - 1, currentIndex));
-
-                            for (var i = 0; i < listView.count; i++) {
-                                var item = listView.itemAtIndex(i);
-                                if (item && item.dropIndicator) {
-                                    if (currentIndex === i && currentIndex !== originalIndex) {
-                                        var indicatorY = currentIndex > originalIndex ? item.height - 1 : -1;
-                                        item.dropIndicator.visible = true;
-                                        item.dropIndicator.y = indicatorY;
-                                    } else {
-                                        item.dropIndicator.visible = false;
-                                    }
-                                }
                             }
                         }
                     }
@@ -359,7 +244,7 @@ ColumnLayout {
         }
     }
 
-    AddPluginPopup {
+    PluginPopup {
         id: addPluginPopup
         pluginApi: root.pluginApi
         pluginName: root.pluginName
@@ -371,13 +256,6 @@ ColumnLayout {
         onPluginIdChanged: root.pluginId = pluginId
         onPluginIconChanged: root.pluginIcon = pluginIcon
         onPluginOrderChanged: root.pluginOrder = pluginOrder
-    }
-
-    function savePlugin() {
-        addPluginPopup.savePlugin();
-    }
-    function saveSettings() {
-        savePlugin();
     }
 
     Connections {

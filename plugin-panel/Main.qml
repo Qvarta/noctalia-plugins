@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Services.UI
+import qs.Services.Noctalia
 
 Item {
     id: root
@@ -56,21 +57,34 @@ Item {
         return {};
     }
 
-    function openPluginPanel(modelData) {
-        if (pluginApi && pluginApi.closePanel) {
-            pluginApi.closePanel();
-        }
-
-        var toggleProcess = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
-        toggleProcess.command = ["qs", "-c", "noctalia-shell", "ipc", "call", "plugin:" + modelData, "toggle"];
-        toggleProcess.startDetached();
-
-        toggleProcess.exited.connect(function (exitCode) {
-            if (exitCode !== 0) {
-                Logger.e("Failed to open plugin " + modelData + " with exit code: " + exitCode);
+    function openPluginPanel(pluginId) {
+        if (typeof PluginService !== 'undefined' && PluginService.togglePluginPanel) {
+            if (PluginService.screenDetector) {
+                PluginService.screenDetector.withCurrentScreen(function(screen) {
+                    if (screen) {
+                        PluginService.togglePluginPanel(pluginId, screen, null);
+                    }
+                });
+            } else {
+                var primaryScreen = Quickshell.screens[0];
+                if (primaryScreen) {
+                    PluginService.togglePluginPanel(pluginId, primaryScreen, null);
+                }
             }
-            toggleProcess.destroy();
-        });
+        } else {
+            Logger.w("Plugin-Panel", "PluginService or togglePluginPanel not available, falling back to CLI method for plugin:", pluginId);
+            
+            var toggleProcess = Qt.createQmlObject('import QtQuick; import Quickshell.Io; Process {}', root);
+            toggleProcess.command = ["qs", "-c", "noctalia-shell", "ipc", "call", "plugin:" + pluginId, "toggle"];
+            toggleProcess.startDetached();
+
+            toggleProcess.exited.connect(function (exitCode) {
+                if (exitCode !== 0) {
+                    Logger.e("Plugin-Panel", "Failed to open plugin " + pluginId + " via CLI with exit code: " + exitCode);
+                }
+                toggleProcess.destroy();
+            });
+        }
     }
 
     function movePlugin(pluginId, toIndex) {

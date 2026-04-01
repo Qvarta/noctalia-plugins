@@ -164,14 +164,14 @@ Item {
                         icon: "settings"
                         tooltipText: I18n.tr("common.settings")
                         baseSize: Style.baseWidgetSize * 0.8
-                        onClicked: BarService.openPluginSettings(screen, pluginApi.manifest)
+                        onClicked: {BarService.openPluginSettings(screen, pluginApi.manifest); pluginApi.closePanel(pluginApi.panelOpenScreen)}
                     }
 
                     NIconButton {
                         icon: "close"
                         tooltipText: I18n.tr("common.close")
                         baseSize: Style.baseWidgetSize * 0.8
-                        onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+                        onClicked:  pluginApi.closePanel(pluginApi.panelOpenScreen)
                     }
                 }
             }
