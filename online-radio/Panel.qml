@@ -3,13 +3,14 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import qs.Commons
 import qs.Widgets
+import qs.Services.UI
 
 Item {
     id: root
     property var pluginApi: null
 
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 800 * Style.uiScaleRatio
+    property real contentPreferredWidth: 600 * Style.uiScaleRatio
     property real contentPreferredHeight: 400 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
@@ -22,9 +23,12 @@ Item {
     anchors.fill: parent
 
     property int currentIndex: 0
-    property int columns: 6
+    property int columns: 4
     property int rows: 4
     property int cellSpacing: Style.marginM
+
+    readonly property real headerHeight: 52 * Style.uiScaleRatio
+    readonly property real panelMargin: 20 * Style.uiScaleRatio
 
     function getImageUrl(stationName) {
         return Qt.resolvedUrl("images/" + stationName + ".png");
@@ -166,11 +170,80 @@ Item {
         id: panelContainer
         anchors.fill: parent
         color: Color.mSurface
-        radius: Style.radiusM
+        anchors.margins: Style.marginS
 
+        radius: Style.radiusM
+        border.width: Style.borderS
+        border.color: Color.mOutline
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Style.marginS
+            spacing: Style.marginM
+
+            // Заголовок
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: headerHeight
+                Layout.topMargin: 20 * Style.uiScaleRatio
+                Layout.leftMargin: 20 * Style.uiScaleRatio
+                Layout.rightMargin: 20 * Style.uiScaleRatio
+                color: "transparent"
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: Style.marginM
+
+                    Rectangle {
+                        width: headerHeight * 0.8
+                        height: headerHeight * 0.8
+                        radius: 4
+                        color: Color.mSurfaceVariant
+                        border.width: Style.borderS
+                        border.color: Color.mOutline
+
+                        NIcon {
+                            id: radioIcon
+                            icon: "radio"
+                            anchors.centerIn: parent
+                            pointSize: Style.fontSizeXL * 1.2
+                            color: Color.mPrimary
+                        }
+                    }
+
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        NText {
+                            text: "Онлайн радио"
+                            font.weight: Font.Bold
+                            font.pointSize: Style.fontSizeXL * 1.1
+                            color: Color.mOnSurface
+                        }
+
+                        NText {
+                            text: "Выберите радиостанцию"
+                            font.pointSize: Style.fontSizeS
+                            color: Color.mOnSurfaceVariant
+                            opacity: 0.8
+                        }
+                    }
+
+                    NIconButton {
+                        icon: "settings"
+                        tooltipText: I18n.tr("common.settings")
+                        baseSize: Style.baseWidgetSize * 0.8
+                        onClicked: BarService.openPluginSettings(screen, pluginApi.manifest)
+                    }
+
+                    NIconButton {
+                        icon: "close"
+                        tooltipText: I18n.tr("common.close")
+                        baseSize: Style.baseWidgetSize * 0.8
+                        onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+                    }
+                }
+            }
 
             GridView {
                 id: gridView
@@ -182,9 +255,27 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
 
-                // ScrollBar.vertical: ScrollBar {
-                //     policy: ScrollBar.AlwaysOff
-                // }
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                    parent: gridView
+                    anchors {
+                        top: parent.top
+                        right: parent.right
+                        bottom: parent.bottom
+                        rightMargin: 10
+                    }
+
+                    background: Rectangle {
+                        color: Color.mOutline
+                        implicitWidth: 6
+                        radius: 4
+                    }
+
+                    contentItem: Rectangle {
+                        color: Color.mPrimary
+                        radius: 4
+                    }
+                }
 
                 delegate: Item {
                     id: delegateContainer
@@ -209,7 +300,7 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             acceptedButtons: Qt.LeftButton
-                            
+
                             onContainsMouseChanged: {
                                 if (containsMouse) {
                                     currentIndex = index;

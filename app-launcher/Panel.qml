@@ -223,8 +223,11 @@ Item {
     Rectangle {
         id: panelContainer
         anchors.fill: parent
+        anchors.margins: Style.marginS
         color: Color.mSurface
         radius: Style.radiusM
+        border.width: Style.borderS
+        border.color: Color.mOutline
         
         ColumnLayout {
             anchors.fill: parent

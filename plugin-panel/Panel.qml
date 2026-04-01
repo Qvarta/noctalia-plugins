@@ -18,7 +18,7 @@ Item {
     readonly property real verticalMargins: Style.marginM * Style.uiScaleRatio * 2
 
     property var buttonModel: []
-    
+
     property real contentPreferredHeight: (buttonModel.length * buttonHeight) + ((buttonModel.length - 1) * buttonSpacing) + 2 * verticalMargins + headerHeight + (20 * Style.uiScaleRatio * 2)
 
     width: contentPreferredWidth
@@ -35,16 +35,16 @@ Item {
             buttonModel = [];
             return;
         }
-        
+
         var pluginsObj = pluginApi.mainInstance.getPluginsList();
-        
+
         if (!pluginsObj) {
             buttonModel = [];
             return;
         }
-        
+
         var pluginsList = [];
-        
+
         for (var pluginId in pluginsObj) {
             if (pluginsObj.hasOwnProperty(pluginId)) {
                 var plugin = pluginsObj[pluginId];
@@ -55,9 +55,9 @@ Item {
                 });
             }
         }
-        
+
         buttonModel = pluginsList;
-        
+
         if (currentIndex >= buttonModel.length) {
             currentIndex = Math.max(0, buttonModel.length - 1);
         }
@@ -113,17 +113,19 @@ Item {
                 width: parent.width
                 height: headerHeight
                 color: "transparent"
-                
+
                 RowLayout {
                     anchors.fill: parent
                     spacing: Style.marginM
-                    
+
                     Rectangle {
                         width: headerHeight * 0.8
                         height: headerHeight * 0.8
-                        radius: Style.radiusS
+                        radius: 4
                         color: Color.mSurfaceVariant
-                        
+                        border.width: Style.borderS
+                        border.color: Color.mOutline
+
                         NIcon {
                             id: puzzleIcon
                             icon: "puzzle"
@@ -132,18 +134,18 @@ Item {
                             color: Color.mPrimary
                         }
                     }
-                    
+
                     Column {
                         Layout.fillWidth: true
                         spacing: 2
-                        
+
                         NText {
                             text: "Плагины"
                             font.weight: Font.Bold
                             font.pointSize: Style.fontSizeXL * 1.1
                             color: Color.mOnSurface
                         }
-                        
+
                         NText {
                             text: "Быстрый запуск"
                             font.pointSize: Style.fontSizeS
@@ -151,69 +153,19 @@ Item {
                             opacity: 0.8
                         }
                     }
-                    
-                    Rectangle {
-                        id: settingsButton
-                        width: Style.baseWidgetSize * 0.9
-                        height: Style.baseWidgetSize * 0.9
-                        radius: 4
-                        color: settingsMouseArea.containsMouse ? Color.mHover : "transparent"
-                        
-                        NIcon {
-                            id: settingsIcon
-                            icon: "settings"
-                            anchors.centerIn: parent
-                            pointSize: Style.fontSizeXL
-                            color: settingsMouseArea.containsMouse ? Color.mOnHover : Color.mPrimary
-                        }
-                        
-                        MouseArea {
-                            id: settingsMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            
-                            ToolTip {
-                                text: "Настройки"
-                                visible: settingsMouseArea.containsMouse
-                                delay: 500
-                            }
-                            
-                            onClicked: {
-                                BarService.openPluginSettings(screen, pluginApi.manifest);
-                            }
-                        }
+
+                    NIconButton {
+                        icon: "settings"
+                        tooltipText: I18n.tr("common.settings")
+                        baseSize: Style.baseWidgetSize * 0.8
+                        onClicked: BarService.openPluginSettings(screen, pluginApi.manifest)
                     }
-                    
-                    Rectangle {
-                        id: closeButton
-                        width: Style.baseWidgetSize * 0.9
-                        height: Style.baseWidgetSize * 0.9
-                        radius: 4
-                        color: closeMouseArea.containsMouse ? Color.mHover : "transparent"
-                        
-                        NIcon {
-                            id: closeIcon
-                            icon: "close"
-                            anchors.centerIn: parent
-                            pointSize: Style.fontSizeXL
-                            color: closeMouseArea.containsMouse ? Color.mOnHover : Color.mPrimary
-                        }
-                        
-                        MouseArea {
-                            id: closeMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            
-                            ToolTip {
-                                text: "Закрыть"
-                                visible: closeMouseArea.containsMouse
-                                delay: 500
-                            }
-                            
-                            onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                        }
+
+                    NIconButton {
+                        icon: "close"
+                        tooltipText: I18n.tr("common.close")
+                        baseSize: Style.baseWidgetSize * 0.8
+                        onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
                     }
                 }
             }
@@ -329,17 +281,17 @@ Item {
                             }
                         }
                     }
-                    
+
                     Rectangle {
                         width: parent.width
                         height: flickable.height
                         visible: buttonModel.length === 0
                         color: "transparent"
-                        
+
                         Column {
                             anchors.centerIn: parent
                             spacing: Style.marginM
-                            
+
                             NIcon {
                                 icon: "puzzle"
                                 color: Color.mOnSurfaceVariant
@@ -347,7 +299,7 @@ Item {
                                 opacity: 0.5
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
-                            
+
                             NText {
                                 text: "Нет доступных плагинов"
                                 color: Color.mOnSurfaceVariant
@@ -355,7 +307,7 @@ Item {
                                 font.weight: Font.Medium
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
-                            
+
                             NText {
                                 text: "Нажмите на иконку настроек чтобы добавить"
                                 color: Color.mOnSurfaceVariant
@@ -369,16 +321,16 @@ Item {
             }
         }
     }
-    
+
     Connections {
         target: pluginApi ? pluginApi.pluginSettings : null
         enabled: pluginApi !== null
-        
+
         function onPluginsChanged() {
             updatePluginsModel();
         }
     }
-    
+
     onPluginApiChanged: {
         if (pluginApi) {
             updatePluginsModel();

@@ -5,7 +5,6 @@ import qs.Commons
 Item {
     id: root
     property var pluginApi: null
-    
     property string currentPlayingStation: ""
     property string currentPlayingProcessState: ""
     property string currentTrack: ""
