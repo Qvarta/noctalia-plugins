@@ -4,6 +4,7 @@ import Quickshell
 import qs.Commons
 import qs.Widgets
 import QtQuick.Controls
+import qs.Services.UI
 
 ColumnLayout {
     id: root
@@ -11,230 +12,324 @@ ColumnLayout {
     property string pluginName: ""
     property string pluginId: ""
     property string pluginIcon: "puzzle"
+    property int pluginOrder: 0
 
     spacing: Style.marginL
 
     Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 350
+        Layout.preferredHeight: 600
         color: Color.mSurfaceVariant
         radius: Style.radiusM
         border.color: Color.mOutline
         border.width: Style.borderS
-        
+
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Style.marginL
             spacing: Style.marginM
 
-            NText {
-                text: "Плагины"
-                color: Color.mPrimary
-                font.pointSize: Style.fontSizeL
-                font.weight: Font.Bold
+            // Заголовок
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginM
+
+                NText {
+                    text: "Плагины"
+                    color: Color.mPrimary
+                    font.pointSize: Style.fontSizeL
+                    font.weight: Font.Bold
+                    Layout.fillWidth: true
+                }
+
+                NIconButton {
+                    icon: "plus"
+                    tooltipText: "Добавить плагин"
+                    baseSize: Style.baseWidgetSize * 0.9
+                    onClicked: {
+                        if (pluginApi && pluginApi.mainInstance) {
+                            var order = pluginApi.mainInstance.getNextOrderNumber();
+                            addPluginPopup.openWithOrder(order);
+                        } else {
+                            addPluginPopup.open();
+                        }
+                    }
+                }
             }
-            
+
             NDivider {
                 Layout.fillWidth: true
             }
 
-            GridView {
-                id: gridView
+            // Список плагинов
+            ListView {
+                id: listView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 200
-                
-                model: {
-                    if (pluginApi && pluginApi.mainInstance) {
-                        var plugins = pluginApi.mainInstance.getPluginsList();
-                        var pluginsList = Object.keys(plugins);
-                        return ["__add_plugin__"].concat(pluginsList);
-                    }
-                    return ["__add_plugin__"];
-                }
-                
-                cellWidth: 120
-                cellHeight: 140
+                Layout.minimumHeight: 300
+                spacing: Style.marginS
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                
-                delegate: Rectangle {
-                    width: gridView.cellWidth - Style.marginM
-                    height: gridView.cellHeight - Style.marginM
-                    color: {
-                        if (modelData === "__add_plugin__") {
-                            return addMouseArea.containsMouse ? Color.mPrimary : Color.mSurface
-                        } else {
-                            return deleteMouseArea.containsMouse ? Color.mPrimary : Color.mSurface
-                        }
-                    }
-                    radius: Style.radiusM
-                    border.color: Color.mOutline
-                    border.width: Style.borderS
-                    
-                    Behavior on color {
-                        ColorAnimation { duration: 150 }
-                    }
-                    
+                interactive: true
+                model: pluginApi && pluginApi.mainInstance ? pluginApi.mainInstance.getSortedPluginsArray() : []
+
+                delegate: Item {
+                    id: delegateRoot
+                    width: listView.width
+                    height: 70
+
+                    // Основной элемент
                     Rectangle {
-                        id: deleteButton
-                        anchors {
-                            top: parent.top
-                            right: parent.right
-                            margins: Style.marginXS
-                        }
-                        width: 24
-                        height: 24
-                        radius: 12
-                        color: deleteMouseArea.containsMouse ? Color.mError : Color.mSurfaceVariant
-                        visible: modelData !== "__add_plugin__" && deleteMouseArea.containsMouse
-                        z: 1
-                        
-                        Behavior on color {
-                            ColorAnimation { duration: 150 }
-                        }
-                        
-                        NIcon {
-                            anchors.centerIn: parent
-                            icon: "trash"
-                            color: deleteMouseArea.containsMouse ? Color.mOnError : Color.mError
-                            pointSize: 14
-                        }
-                    }
-                    
-                    MouseArea {
-                        id: deleteMouseArea
+                        id: delegateRect
                         anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        visible: modelData !== "__add_plugin__"
-                        onClicked: {
-                            var plugins = pluginApi.mainInstance.getPluginsList();
-                            if (plugins[modelData]) {
-                                delete plugins[modelData];
-                                pluginApi.pluginSettings.plugins = plugins;
-                                pluginApi.saveSettings();
-                                
-                                if (root.pluginId === modelData) {
-                                    root.pluginName = "";
-                                    root.pluginId = "";
-                                    root.pluginIcon = "puzzle";
+                        color: Color.mSurface
+                        radius: Style.radiusM
+                        border.color: Color.mOutline
+                        border.width: Style.borderS
+                        opacity: dragArea.drag.active ? 0.5 : 1.0
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Style.marginM
+                            spacing: Style.marginM
+
+                            Rectangle {
+                                width: 40
+                                height: 40
+                                radius: 4
+                                color: Color.mOutline
+
+                                NIcon {
+                                    anchors.centerIn: parent
+                                    icon: modelData.data.icon || "puzzle"
+                                    color: Color.mPrimary
+                                    pointSize: 24
                                 }
                             }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: Style.marginXS
+
+                                NText {
+                                    id: modelName
+                                    Layout.fillWidth: true
+                                    text: modelData.data.name || "Без названия"
+                                    color: Color.mOnSurface
+                                    font.pointSize: Style.fontSizeM
+                                    font.weight: Font.Medium
+                                    elide: Text.ElideRight
+                                }
+
+                                NText {
+                                    Layout.fillWidth: true
+                                    text: modelData.data.id || modelData.id
+                                    color: Color.mOnSurfaceVariant
+                                    font.pointSize: Style.fontSizeXS
+                                    opacity: 0.7
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            // NIconButton {
+                            //     icon: "trash"
+                            //     tooltipText: "Удалить плагин"
+                            //     baseSize: 32
+                            //     onClicked: {
+                            //         if (pluginApi && pluginApi.mainInstance) {
+                            //             pluginApi.mainInstance.deletePlugin(modelData.id);
+                            //             if (root.pluginId === modelData.id) {
+                            //                 root.pluginName = "";
+                            //                 root.pluginId = "";
+                            //                 root.pluginIcon = "puzzle";
+                            //                 root.pluginOrder = 0;
+                            //             }
+                            //         }
+                            //     }
+                            // }
                         }
-                    }
-                    
-                    MouseArea {
-                        id: addMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        visible: modelData === "__add_plugin__"
-                        onClicked: {
-                            root.pluginName = "";
-                            root.pluginId = "";
-                            root.pluginIcon = "puzzle";
-                            addPluginPopup.open();
-                        }
-                    }
-                    
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: Style.marginS
-                        spacing: Style.marginS
-                        
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 50
-                            color: "transparent"
-                            
-                            NIcon {
-                                anchors.centerIn: parent
-                                icon: {
-                                    if (modelData === "__add_plugin__") {
-                                        return "plus"
-                                    } else {
-                                        var plugins = pluginApi.mainInstance.getPluginsList();
-                                        return plugins[modelData].icon || "puzzle";
+
+                        MouseArea {
+                            id: dragArea
+                            anchors.fill: parent
+                            drag.target: dragItem
+                            cursorShape: Qt.OpenHandCursor
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                            onEntered: TooltipService.show(modelName, "ПКМ - удалить")
+                            onExited: TooltipService.hide()
+
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.RightButton) {
+                                    if (pluginApi && pluginApi.mainInstance) {
+                                        pluginApi.mainInstance.deletePlugin(modelData.id);
+                                        if (root.pluginId === modelData.id) {
+                                            root.pluginName = "";
+                                            root.pluginId = "";
+                                            root.pluginIcon = "puzzle";
+                                            root.pluginOrder = 0;
+                                        }
+                                    }
+                                    mouse.accepted = true;
+                                }
+                            }
+
+                            onPressed: mouse => {
+                                if (mouse.button === Qt.RightButton) {
+                                    mouse.accepted = true;
+                                    return;
+                                }
+
+                                delegateRoot.z = 2;
+                                dragItem.startDrag(modelData.id, index);
+                                dragItem.x = 0;
+                                dragItem.y = 0;
+                                dragItem.width = delegateRect.width;
+                                dragItem.height = delegateRect.height;
+                                dragItem.visible = true;
+                                dragItem.dragActive = true;
+                            }
+
+                            onReleased: {
+                                if (dragItem.dragActive) {
+                                    var dropIndex = Math.floor((dragItem.y + dragItem.height / 2) / delegateRect.height);
+                                    dropIndex = Math.max(0, Math.min(listView.count - 1, dropIndex));
+
+                                    if (dropIndex !== index && pluginApi && pluginApi.mainInstance) {
+                                        pluginApi.mainInstance.movePlugin(modelData.id, dropIndex);
                                     }
                                 }
-                                color: {
-                                    if (modelData === "__add_plugin__") {
-                                        return addMouseArea.containsMouse ? Color.mOnPrimary : Color.mPrimary
+                                delegateRoot.z = 0;
+                                dragItem.visible = false;
+                                dragItem.dragActive = false;
+                                dragItem.draggedId = "";
+                                dragItem.originalIndex = -1;
+                            }
+                        }
+                    }
+
+                    // копия элемента для перетаскивания
+                    Rectangle {
+                        id: dragItem
+                        visible: false
+                        z: 100
+                        color: Color.mSurface
+                        radius: Style.radiusM
+                        border.color: Color.mPrimary
+                        border.width: Style.borderM
+                        opacity: 0.95
+
+                        property bool dragActive: false
+                        property string draggedId: ""
+                        property int originalIndex: -1
+
+                        function startDrag(id, idx) {
+                            draggedId = id;
+                            originalIndex = idx;
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Style.marginM
+                            spacing: Style.marginM
+
+                            Rectangle {
+                                width: 40
+                                height: 40
+                                radius: 20
+                                color: Color.mPrimary
+                                opacity: 0.3
+
+                                NIcon {
+                                    anchors.centerIn: parent
+                                    icon: modelData.data.icon || "puzzle"
+                                    color: Color.mPrimary
+                                    pointSize: 24
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: Style.marginXS
+
+                                NText {
+                                    Layout.fillWidth: true
+                                    text: modelData.data.name || "Без названия"
+                                    color: Color.mPrimary
+                                    font.pointSize: Style.fontSizeM
+                                    font.weight: Font.Medium
+                                    elide: Text.ElideRight
+                                }
+
+                                NText {
+                                    Layout.fillWidth: true
+                                    text: modelData.data.id || modelData.id
+                                    color: Color.mPrimary
+                                    font.pointSize: Style.fontSizeXS
+                                    opacity: 0.8
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+
+                        states: State {
+                            when: dragItem.dragActive
+                            ParentChange {
+                                target: dragItem
+                                parent: listView
+                            }
+                            AnchorChanges {
+                                target: dragItem
+                                anchors.horizontalCenter: undefined
+                                anchors.verticalCenter: undefined
+                            }
+                        }
+
+                        onXChanged: {
+                            if (dragActive) {
+                                updateDropIndicator();
+                            }
+                        }
+
+                        onYChanged: {
+                            if (dragActive) {
+                                updateDropIndicator();
+                            }
+                        }
+
+                        function updateDropIndicator() {
+                            var currentIndex = Math.floor((dragItem.y + dragItem.height / 2) / delegateRect.height);
+                            currentIndex = Math.max(0, Math.min(listView.count - 1, currentIndex));
+
+                            for (var i = 0; i < listView.count; i++) {
+                                var item = listView.itemAtIndex(i);
+                                if (item && item.dropIndicator) {
+                                    if (currentIndex === i && currentIndex !== originalIndex) {
+                                        var indicatorY = currentIndex > originalIndex ? item.height - 1 : -1;
+                                        item.dropIndicator.visible = true;
+                                        item.dropIndicator.y = indicatorY;
                                     } else {
-                                        return deleteMouseArea.containsMouse ? Color.mOnPrimary : Color.mPrimary
+                                        item.dropIndicator.visible = false;
                                     }
                                 }
-                                pointSize: 32
                             }
-                        }
-                        
-                        NText {
-                            Layout.fillWidth: true
-                            text: {
-                                if (modelData === "__add_plugin__") {
-                                    return "Добавить плагин"
-                                } else {
-                                    var plugins = pluginApi.mainInstance.getPluginsList();
-                                    return plugins[modelData].name || "Без названия";
-                                }
-                            }
-                            color: {
-                                if (modelData === "__add_plugin__") {
-                                    return addMouseArea.containsMouse ? Color.mOnPrimary : Color.mOnSurface
-                                } else {
-                                    return deleteMouseArea.containsMouse ? Color.mOnPrimary : Color.mOnSurface
-                                }
-                            }
-                            font.pointSize: Style.fontSizeS
-                            font.weight: {
-                                if (modelData === "__add_plugin__") {
-                                    return addMouseArea.containsMouse ? Font.Bold : Font.Normal
-                                } else {
-                                    return deleteMouseArea.containsMouse ? Font.Bold : Font.Normal
-                                }
-                            }
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.WordWrap
-                            maximumLineCount: 2
-                        }
-                        
-                        NText {
-                            Layout.fillWidth: true
-                            text: {
-                                if (modelData === "__add_plugin__") {
-                                    return ""
-                                } else {
-                                    var plugins = pluginApi.mainInstance.getPluginsList();
-                                    return plugins[modelData].id || modelData;
-                                }
-                            }
-                            color: {
-                                if (modelData === "__add_plugin__") {
-                                    return Color.mOnSurfaceVariant
-                                } else {
-                                    return deleteMouseArea.containsMouse ? Color.mOnPrimary : Color.mOnSurfaceVariant
-                                }
-                            }
-                            font.pointSize: Style.fontSizeXS
-                            opacity: 0.7
-                            horizontalAlignment: Text.AlignHCenter
-                            visible: modelData !== "__add_plugin__" && deleteMouseArea.containsMouse
                         }
                     }
                 }
-                
+
+                // Пустой список
                 Rectangle {
                     anchors.centerIn: parent
                     width: parent.width - 40
                     height: 120
-                    visible: gridView.count === 1 && model[0] === "__add_plugin__" && (!pluginApi || !pluginApi.mainInstance || Object.keys(pluginApi.mainInstance.getPluginsList()).length === 0)
+                    visible: listView.count === 0
                     color: "transparent"
-                    
+
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: Style.marginM
-                        
+
                         NIcon {
                             icon: "puzzle"
                             color: Color.mOnSurfaceVariant
@@ -242,7 +337,7 @@ ColumnLayout {
                             opacity: 0.5
                             Layout.alignment: Qt.AlignHCenter
                         }
-                        
+
                         NText {
                             text: "Нет доступных плагинов"
                             color: Color.mOnSurfaceVariant
@@ -250,9 +345,9 @@ ColumnLayout {
                             font.weight: Font.Medium
                             Layout.alignment: Qt.AlignHCenter
                         }
-                        
+
                         NText {
-                            text: "Нажмите + чтобы добавить"
+                            text: "Плагины будут отображаться здесь"
                             color: Color.mOnSurfaceVariant
                             font.pointSize: Style.fontSizeS
                             opacity: 0.7
@@ -263,179 +358,34 @@ ColumnLayout {
             }
         }
     }
-    
-    Popup {
+
+    AddPluginPopup {
         id: addPluginPopup
-        visible: false
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
-        padding: 0
-        margins: 10
-        
-        x: -width - 20
-        y: 0
-        
-        width: 500
-        height: popupContent.height + 60
-        
-        background: Rectangle {
-            color: Color.mSurfaceVariant
-            radius: Style.radiusM
-            border.color: Color.mPrimary
-            border.width: Style.borderM
-        }
-        
-        Column {
-            id: popupContent
-            anchors.centerIn: parent
-            width: parent.width - 40
-            spacing: Style.marginM
-            
-            Column {
-                width: parent.width
-                spacing: Style.marginXS
-                
-                NText {
-                    text: "Добавить плагин"
-                    color: Color.mPrimary
-                    font.pointSize: Style.fontSizeL
-                    font.weight: Font.Bold
-                }
-                
-                NDivider {
-                    width: parent.width
-                }
-            }
-            
-            RowLayout {
-                width: parent.width
-                spacing: Style.marginM
-                
-                Rectangle {
-                    id: iconBlock
-                    Layout.preferredWidth: 80
-                    Layout.preferredHeight: 80
-                    color: iconMouseArea.containsMouse ? Color.mPrimary : Color.mSurface
-                    radius: Style.radiusM
-                    border.color: Color.mOutline
-                    border.width: Style.borderS
-                    
-                    Behavior on color {
-                        ColorAnimation { duration: 150 }
-                    }
-                    
-                    NIcon {
-                        anchors.centerIn: parent
-                        icon: root.pluginIcon
-                        color: iconMouseArea.containsMouse ? Color.mOnPrimary : Color.mPrimary
-                        pointSize: 40
-                    }
-                    
-                    MouseArea {
-                        id: iconMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            iconPicker.open();
-                        }
-                    }
-                }
-                
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: Style.marginS
-                    
-                    NTextInput {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 70
-                        label: "Отображаемое имя"
-                        placeholderText: "Имя плагина"
-                        text: root.pluginName
-                        onTextChanged: root.pluginName = text
-                    }
-                    
-                    NTextInput {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 70
-                        label: "Уникальный идентификатор ID"
-                        placeholderText: "id плагина"
-                        text: root.pluginId
-                        onTextChanged: root.pluginId = text
-                    }
-                }
-            }
-            
-            RowLayout {
-                width: parent.width
-                spacing: Style.marginM
-                Layout.alignment: Qt.AlignRight
-                
-                Item {
-                    Layout.fillWidth: true
-                }
-                
-                NButton {
-                    text: "Отмена"
-                    onClicked: {
-                        addPluginPopup.close();
-                        root.pluginName = "";
-                        root.pluginId = "";
-                        root.pluginIcon = "puzzle";
-                    }
-                }
-                
-                NButton {
-                    text: "Сохранить"
-                    enabled: root.pluginName !== "" && root.pluginId !== ""
-                    onClicked: {
-                        savePlugin();
-                        addPluginPopup.close();
-                    }
-                }
-            }
-        }
+        pluginApi: root.pluginApi
+        pluginName: root.pluginName
+        pluginId: root.pluginId
+        pluginIcon: root.pluginIcon
+        pluginOrder: root.pluginOrder
+
+        onPluginNameChanged: root.pluginName = pluginName
+        onPluginIdChanged: root.pluginId = pluginId
+        onPluginIconChanged: root.pluginIcon = pluginIcon
+        onPluginOrderChanged: root.pluginOrder = pluginOrder
     }
 
-    NIconPicker {
-        id: iconPicker
-        onIconSelected: function(icon) {
-            root.pluginIcon = icon;
-        }
-    }
-    
     function savePlugin() {
-        if (!pluginApi) {
-            return;
-        }
-        
-        if (root.pluginName !== "" && root.pluginId !== "") {
-            var pluginKey = root.pluginId;
-            
-            if (!pluginApi.pluginSettings.plugins) {
-                pluginApi.pluginSettings.plugins = {};
-            }
-            
-            pluginApi.pluginSettings.plugins[pluginKey] = {
-                name: root.pluginName,
-                id: root.pluginId,
-                icon: root.pluginIcon || "puzzle"
-            };
-            
-            pluginApi.saveSettings();
-        }
-        
-        root.pluginName = "";
-        root.pluginId = "";
-        root.pluginIcon = "puzzle";
-        
-        if (pluginApi.closePanel) {
-            pluginApi.closePanel();
-        }
+        addPluginPopup.savePlugin();
     }
-    
     function saveSettings() {
         savePlugin();
+    }
+
+    Connections {
+        target: pluginApi ? pluginApi.mainInstance : null
+        enabled: pluginApi !== null && pluginApi.mainInstance !== null
+
+        function onPluginsListChanged() {
+            listView.model = pluginApi.mainInstance.getSortedPluginsArray();
+        }
     }
 }

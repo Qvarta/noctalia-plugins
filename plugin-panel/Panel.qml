@@ -51,10 +51,16 @@ Item {
                 pluginsList.push({
                     id: pluginId,
                     displayName: plugin.name || pluginId,
-                    icon: plugin.icon || "puzzle"
+                    icon: plugin.icon || "puzzle",
+                    order: plugin.order !== undefined ? plugin.order : Number.MAX_VALUE
                 });
             }
         }
+        
+        // Сортировка по полю order
+        pluginsList.sort(function(a, b) {
+            return a.order - b.order;
+        });
 
         buttonModel = pluginsList;
 
@@ -200,9 +206,7 @@ Item {
                             readonly property bool isHovered: mouseArea.containsMouse
 
                             Behavior on opacity {
-                                NumberAnimation {
-                                    duration: 150
-                                }
+                                NumberAnimation { duration: 150 }
                             }
 
                             Rectangle {
@@ -213,9 +217,7 @@ Item {
                                 color: (mouseArea.containsMouse || isSelected) ? Color.mHover : Color.mSurfaceVariant
 
                                 Behavior on color {
-                                    ColorAnimation {
-                                        duration: 150
-                                    }
+                                    ColorAnimation { duration: 150 }
                                 }
 
                                 MouseArea {
@@ -251,9 +253,7 @@ Item {
                                         color: (mouseArea.containsMouse || isSelected) ? Color.mOnHover : Color.mPrimary
 
                                         Behavior on color {
-                                            ColorAnimation {
-                                                duration: 150
-                                            }
+                                            ColorAnimation { duration: 150 }
                                         }
 
                                         anchors.verticalCenter: parent.verticalCenter
@@ -268,9 +268,7 @@ Item {
                                         color: (mouseArea.containsMouse || isSelected) ? Color.mOnHover : Color.mPrimary
 
                                         Behavior on color {
-                                            ColorAnimation {
-                                                duration: 150
-                                            }
+                                            ColorAnimation { duration: 150 }
                                         }
 
                                         anchors.verticalCenter: parent.verticalCenter
@@ -323,18 +321,16 @@ Item {
     }
 
     Connections {
-        target: pluginApi ? pluginApi.pluginSettings : null
-        enabled: pluginApi !== null
-
-        function onPluginsChanged() {
+        target: pluginApi ? pluginApi.mainInstance : null
+        enabled: pluginApi !== null && pluginApi.mainInstance !== null
+        
+        function onPluginsListChanged() {
             updatePluginsModel();
         }
     }
 
     onPluginApiChanged: {
-        if (pluginApi) {
-            updatePluginsModel();
-        }
+        updatePluginsModel();
     }
 
     Component.onCompleted: {

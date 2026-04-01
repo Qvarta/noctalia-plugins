@@ -3,32 +3,38 @@
     "app-launcher": {
       "id": "app-launcher",
       "name": "Приложения",
-      "icon": "apps"
+      "icon": "apps",
+      "order": 0
     },
     "online-radio": {
       "id": "online-radio",
       "name": "Интернет-радио",
-      "icon": "radio"
+      "icon": "radio",
+      "order": 1
     },
     "screenshot-plugin": {
       "id": "screenshot-plugin",
       "name": "Скриншот",
-      "icon": "camera"
+      "icon": "camera",
+      "order": 2
     },
     "notes-scratchpad": {
       "id": "notes-scratchpad",
       "name": "Заметки",
-      "icon": "notes"
+      "icon": "notes",
+      "order": 3
     },
     "torrent-plugin": {
       "id": "torrent-plugin",
       "name": "Торренты",
-      "icon": "download"
+      "icon": "download",
+      "order": 4
     },
     "hyprland-cheatsheet": {
       "id": "hyprland-cheatsheet",
       "name": "Горячие клавиши",
-      "icon": "keyboard"
+      "icon": "keyboard",
+      "order": 5
     }
   }
 }
