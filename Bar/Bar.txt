@@ -1,0 +1,13 @@
+ Добавлены переменные для кастомной ширины горизрнтального бара
+ 
+
+.config/quickshell/noctalia-shell/Modules/Panels/Settings/Tabs/Bar/AppearanceSubTab.qml
+.config/quickshell/noctalia-shell/Commons/Settings.qml
+
+.config/quickshell/noctalia-shell/Modules/MainScreen/SmartPanel.qml
+.config/quickshell/noctalia-shell/Modules/MainScreen/MainScreen.qml
+.config/quickshell/noctalia-shell/Modules/MainScreen/BarContentWindow.qml
+
+переводы:
+.config/quickshell/noctalia-shell/Assets/Translations/en.json
+.config/quickshell/noctalia-shell/Assets/Translations/ru.json

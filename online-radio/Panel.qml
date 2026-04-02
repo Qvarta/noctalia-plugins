@@ -180,7 +180,6 @@ Item {
             anchors.margins: Style.marginS
             spacing: Style.marginM
 
-            // Заголовок
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: headerHeight
@@ -284,8 +283,8 @@ Item {
 
                     readonly property bool isSelected: index === currentIndex
                     readonly property bool isHovered: mouseArea.containsMouse
-                    readonly property bool isActive: isSelected || isHovered
                     readonly property bool isNowPlaying: isStationPlaying(modelData.name)
+                    readonly property bool isActive: isSelected || isHovered || isNowPlaying
 
                     Rectangle {
                         id: delegateRect
