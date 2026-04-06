@@ -9,14 +9,13 @@ ColumnLayout {
 
     property var pluginApi: null
 
-    property string currentIconName: pluginApi?.pluginSettings?.currentIconName || 
-                                     pluginApi?.manifest?.metadata?.defaultSettings?.currentIconName
+    property string currentIconName: pluginApi?.pluginSettings?.currentIconName || pluginApi?.manifest?.metadata?.defaultSettings?.currentIconName
 
     spacing: Style.marginL
 
     property string stationNname: ""
     property string stationUrl: ""
-    property string stationFile: "" 
+    property string stationFile: ""
     property int currentNumber: pluginApi?.pluginSettings?.station_count
 
     Rectangle {
@@ -26,38 +25,38 @@ ColumnLayout {
         radius: Style.radiusM
         border.color: Color.mOutline
         border.width: Style.borderS
-        
+
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Style.marginL
             spacing: Style.marginM
-            
+
             NText {
                 text: pluginApi?.tr("iconLabel")
                 color: Color.mPrimary
                 font.pointSize: Style.fontSizeL
                 font.weight: Font.Bold
             }
-            
+
             NDivider {
                 Layout.fillWidth: true
             }
-            
+
             RowLayout {
                 spacing: Style.marginL
                 Layout.fillWidth: true
-                
+
                 Rectangle {
                     width: 40
                     height: 40
                     radius: Style.radiusS
                     color: Color.mSurface
-                    
+
                     NIcon {
                         anchors.centerIn: parent
                         icon: root.currentIconName
                         color: Color.mPrimary
-                        pointSize: 24  
+                        pointSize: 24
                         applyUiScale: true
                     }
                 }
@@ -94,38 +93,38 @@ ColumnLayout {
         radius: Style.radiusM
         border.color: Color.mOutline
         border.width: Style.borderS
-        
+
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Style.marginL
             spacing: Style.marginM
-            
+
             NText {
                 text: pluginApi?.tr("fileTitle")
                 color: Color.mPrimary
                 font.pointSize: Style.fontSizeL
                 font.weight: Font.Bold
             }
-            
+
             NDivider {
                 Layout.fillWidth: true
             }
-            
+
             RowLayout {
                 spacing: Style.marginL
                 Layout.fillWidth: true
-                
+
                 Rectangle {
                     width: 44
                     height: 44
                     radius: Style.radiusS
                     color: Color.mSurface
-                    
+
                     NIcon {
                         anchors.centerIn: parent
                         icon: "json"
                         color: Color.mPrimary
-                        pointSize: 24  
+                        pointSize: 24
                         applyUiScale: true
                     }
                 }
@@ -158,15 +157,20 @@ ColumnLayout {
         title: pluginApi?.tr("fileSelectTitle")
         selectionMode: "files"
         nameFilters: ["*.json"]
-        
-        onAccepted: function(paths) {
+
+        onAccepted: function (paths) {
             if (paths.length > 0) {
                 root.stationFile = paths[0];
+                root.saveSettings();
+                if (pluginApi && pluginApi.mainInstance) {
+                    Logger.i("Settings", "Calling mainInstance.loadStationsFromJson with path: " + paths[0]);
+                    pluginApi.mainInstance.loadStationsFromJson(paths[0]);
+                }
             }
         }
-        
+
         onCancelled: {
-            // 
+            //
         }
     }
 
@@ -177,28 +181,28 @@ ColumnLayout {
         radius: Style.radiusM
         border.color: Color.mOutline
         border.width: Style.borderS
-        
+
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Style.marginL
             spacing: Style.marginM
-            
+
             NText {
                 text: pluginApi?.tr("addTitle")
                 color: Color.mPrimary
                 font.pointSize: Style.fontSizeL
                 font.weight: Font.Bold
             }
-            
+
             NDivider {
                 Layout.fillWidth: true
             }
-            
+
             ColumnLayout {
                 spacing: Style.marginM
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                
+
                 NTextInput {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 70
@@ -225,16 +229,12 @@ ColumnLayout {
         if (!pluginApi) {
             return;
         }
-        
+
         pluginApi.pluginSettings.currentIconName = root.currentIconName;
 
         var name = stationNname.trim();
         var url = stationUrl.trim();
 
-        if (root.stationFile !== ""){
-            pluginApi.pluginSettings["stations_json"] = root.stationFile;
-        }
-        
         if (name !== "" && url !== "") {
             pluginApi.pluginSettings.station_count = currentNumber + 1;
             pluginApi.pluginSettings["station_" + currentNumber + "_name"] = name;
@@ -242,7 +242,7 @@ ColumnLayout {
         }
 
         pluginApi.saveSettings();
-        
+
         if (pluginApi.closePanel) {
             pluginApi.closePanel();
         }

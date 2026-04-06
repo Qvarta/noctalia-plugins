@@ -16,7 +16,7 @@ Item {
     readonly property bool isPlaying: currentPlayingStation && currentPlayingStation !== ""
 
     property string currentIconName: pluginApi?.pluginSettings?.currentIconName || pluginApi?.manifest?.metadata?.defaultSettings?.currentIconName
-    property string currentPlayingStation: pluginApi?.pluginSettings?.currentPlayingStation
+    property string currentPlayingStation: pluginApi?.pluginSettings?.currentPlayingStation  || ""
     property string currentTrack: pluginApi?.pluginSettings?.currentTrack || ""
     property string currentArtist: pluginApi?.pluginSettings?.currentArtist || ""
     

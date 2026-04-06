@@ -3,686 +3,523 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import qs.Commons
 import qs.Widgets
+import qs.Services.UI
 
 Item {
     id: root
-    property var pluginApi: null
-    
-    readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 350 * Style.uiScaleRatio
-    property real contentPreferredHeight: {
-        if (addTorrentMode) return 310 * Style.uiScaleRatio;
-        
-        var headerHeight = 50; 
-        var itemHeight = 52; 
-        var spacing = 8; 
-        var padding = 32; 
-        
-        var totalTorrentsHeight = torrentModel ? (torrentModel.count * itemHeight + Math.max(0, torrentModel.count - 1) * spacing) : 0;
-        var totalHeight = headerHeight + totalTorrentsHeight + padding;
-        
-        var maxHeight = 500 * Style.uiScaleRatio;
-        return Math.min(maxHeight, totalHeight);
-    }
-    readonly property bool allowAttach: true
-    
-    property ListModel torrentModel: pluginApi?.mainInstance?.torrentModel || null
-    property bool isLoading: pluginApi?.mainInstance?.isLoading || false
-    property string errorMessage: pluginApi?.mainInstance?.errorMessage || ""
-    
-    property bool addTorrentMode: false
-    property string magnetLink: ""
-    property string torrentFilePath: ""
-    
     anchors.fill: parent
+
+    property var pluginApi: null
+    readonly property bool isPlaying: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentPlayingProcessState === "start"
+
+    readonly property var geometryPlaceholder: panelContainer
+    readonly property bool allowAttach: true
+
+    property int currentIndex: 0
+    property int columns: 4
+    property int rows: 4
+    property int cellSpacing: Style.marginM
+    property bool initialSelectionDone: false
     
-    NPopupContextMenu {
-        id: torrentContextMenu
-        itemHeight: 36
-        minWidth: 160
-        
-        property var currentTorrent: null
-        
-        onTriggered: function(action, item) {
-            if (currentTorrent) {
-                if (action === "pause") {
-                    if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
-                        pluginApi.mainInstance.pauseTorrent(currentTorrent.torrentId);
-                    }
-                } else if (action === "resume") {
-                    if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
-                        pluginApi.mainInstance.resumeTorrent(currentTorrent.torrentId);
-                    }
-                } else if (action === "delete") {
-                    if (pluginApi && pluginApi.mainInstance && currentTorrent.torrentId) {
-                        // Обновляем модель сразу после удаления
-                        pluginApi.mainInstance.deleteTorrent(currentTorrent.torrentId);
-                        
-                        var torrentModel = pluginApi.mainInstance.torrentModel;
-                        if (torrentModel) {
-                            for (var i = 0; i < torrentModel.count; i++) {
-                                if (torrentModel.get(i).id === currentTorrent.torrentId) {
-                                    torrentModel.remove(i);
-                                    break;
-                                }
-                            }
-                        }
+    property real contentPreferredWidth: 600 * Style.uiScaleRatio
+    property real contentPreferredHeight: 400 * Style.uiScaleRatio
+    readonly property real headerHeight: 52 * Style.uiScaleRatio
+    readonly property real panelMargin: 20 * Style.uiScaleRatio
+
+    function isStationPlaying(stationName) {
+        return isPlaying && pluginApi.mainInstance.currentPlayingStation === stationName;
+    }
+
+    function getImageUrl(stationName) {
+        return Qt.resolvedUrl("images/" + stationName + ".png");
+    }
+
+    function getCurrentRow() {
+        return Math.floor(currentIndex / columns);
+    }
+
+    function getCurrentColumn() {
+        return currentIndex % columns;
+    }
+
+    function updateCurrentIndex() {
+        if (pluginApi && pluginApi.mainInstance) {
+            var stations = pluginApi.mainInstance.getStations();
+            var currentStation = pluginApi.mainInstance.currentPlayingStation;
+
+            if (currentStation && currentStation !== "") {
+                for (var i = 0; i < stations.length; i++) {
+                    if (stations[i].name === currentStation) {
+                        currentIndex = i;
+                        Qt.callLater(ensureVisible);
+                        return;
                     }
                 }
             }
-            close();
+        }
+        currentIndex = 0;
+        Qt.callLater(ensureVisible);
+    }
+
+    function ensureVisible() {
+        if (!gridView || !gridView.model || gridView.model.length === 0)
+            return;
+        gridView.positionViewAtIndex(currentIndex, GridView.Contain);
+    }
+
+    function selectStation(index) {
+        if (index >= 0 && gridView.model && index < gridView.model.length) {
+            currentIndex = index;
+            ensureVisible();
+        }
+    }
+
+    function moveSelection(deltaX, deltaY) {
+        if (!gridView.model || gridView.model.length === 0)
+            return;
+        var currentRow = getCurrentRow();
+        var currentCol = getCurrentColumn();
+        var newRow = currentRow + deltaY;
+        var newCol = currentCol + deltaX;
+        var newIndex = newRow * columns + newCol;
+
+        if (deltaY !== 0) {
+            if (newRow >= 0 && newRow < Math.ceil(gridView.model.length / columns)) {
+                var maxColInNewRow = Math.min(columns - 1, gridView.model.length - 1 - newRow * columns);
+                if (maxColInNewRow >= 0) {
+                    newCol = Math.min(currentCol, maxColInNewRow);
+                    newIndex = newRow * columns + newCol;
+                    selectStation(newIndex);
+                }
+            }
+        } else if (deltaX !== 0) {
+            if (newIndex >= 0 && newIndex < gridView.model.length) {
+                var rowForNewIndex = Math.floor(newIndex / columns);
+                if (rowForNewIndex === currentRow) {
+                    selectStation(newIndex);
+                }
+            }
+        }
+    }
+
+    function activateCurrentStation() {
+        if (currentIndex >= 0 && gridView.model && currentIndex < gridView.model.length) {
+            var station = gridView.model[currentIndex];
+            if (station && pluginApi && pluginApi.mainInstance) {
+                var main = pluginApi.mainInstance;
+
+                if (isStationPlaying(station.name)) {
+                    main.stopPlayback();
+                } else {
+                    if (isPlaying) {
+                        main.stopPlayback();
+                        stopPlaybackTimer.stationToPlay = station;
+                        stopPlaybackTimer.start();
+                    } else {
+                        main.playStation(station.name, station.url);
+                    }
+                }
+            }
+        }
+    }
+
+    Keys.onUpPressed: moveSelection(0, -1)
+    Keys.onDownPressed: moveSelection(0, 1)
+    Keys.onLeftPressed: moveSelection(-1, 0)
+    Keys.onRightPressed: moveSelection(1, 0)
+    Keys.onReturnPressed: activateCurrentStation()
+    Keys.onEnterPressed: activateCurrentStation()
+
+    function updateSelectionFromPlaying() {
+        if (!pluginApi || !pluginApi.mainInstance)
+            return;
+
+        var currentStation = pluginApi.mainInstance.currentPlayingStation;
+        var stations = pluginApi.mainInstance.getStations();
+
+        if (!stations || stations.length === 0)
+            return;
+
+        if (currentStation && currentStation !== "") {
+            for (var i = 0; i < stations.length; i++) {
+                if (stations[i].name === currentStation) {
+                    if (currentIndex !== i) {
+                        currentIndex = i;
+                        Qt.callLater(ensureVisible);
+                    }
+                    initialSelectionDone = true;
+                    return;
+                }
+            }
         }
 
-        function updateMenuModel() {
-            if (!currentTorrent) return;
-            
-            var isStopped = currentTorrent.torrentStatus === "stopped";
-            
-            var newModel = [];
-            
-            if (!isStopped) {
-                newModel.push({
-                    "label": pluginApi?.tr("statusPause"),
-                    "action": "pause",
-                    "icon": "player-pause",
-                    "enabled": true
-                });
-            } else {
-                newModel.push({
-                    "label": pluginApi?.tr("continue"),
-                    "action": "resume",
-                    "icon": "player-play",
-                    "enabled": true
-                });
-            }
-            
-            newModel.push({
-                "label": pluginApi?.tr("removeTorrentTitle"),
-                "action": "delete",
-                "icon": "trash",
-                "enabled": true
-            });
-            
-            newModel.push({
-                "label": "",
-                "action": "separator",
-                "enabled": false,
-                "visible": false
-            });
-            
-            newModel.push({
-                "label": pluginApi?.tr("cancel"),
-                "action": "cancel",
-                "icon": "x",
-                "enabled": true
-            });
-            
-            model = newModel;
+        if (currentIndex !== 0 && stations.length > 0) {
+            currentIndex = 0;
+            Qt.callLater(ensureVisible);
         }
-        
-        function openForTorrent(torrent, mouseX, mouseY) {
-            currentTorrent = torrent;
-            updateMenuModel();
-            
-            var anchor = Qt.createQmlObject(`
-                import QtQuick
-                Item {
-                    width: 1
-                    height: 1
-                    x: ${mouseX}
-                    y: ${mouseY}
-                }
-            `, root, "contextMenuAnchor");
-            
-            openAtItem(anchor, null);
-            
-            torrentContextMenu.closed.connect(function() {
-                if (anchor) {
-                    anchor.destroy();
-                }
-                torrentContextMenu.closed.disconnect(arguments.callee);
-            });
-        }
-        
-        function close() {
-            visible = false;
-            currentTorrent = null;
-        }
+        initialSelectionDone = true;
     }
-    
-    component TorrentItem: Rectangle {
-        id: torrentRoot
-        property int torrentId: 0
-        property string torrentName: ""
-        property int torrentPercent: 0
-        property string torrentStatus: ""
-        property int itemIndex: 0
-        
-        width: parent.width
-        height: 52
-        radius: 8
-        color: itemIndex % 2 === 0 ? Color.mSurface :  Color.mSurfaceVariant
-        
-        RowLayout {
-            anchors {
-                fill: parent
-                leftMargin: 12
-                rightMargin: 12
-            }
-            spacing: 10
-            
-            NIcon {
-                Layout.preferredWidth: 24
-                Layout.alignment: Qt.AlignVCenter
-                icon: {
-                    if (torrentRoot.torrentStatus === "downloading") return "download";
-                    if (torrentRoot.torrentStatus === "stopped") return "player-pause";
-                    if (torrentRoot.torrentStatus === "completed") return "check";
-                    if (torrentRoot.torrentStatus === "seeding") return "upload";
-                    if (torrentRoot.torrentStatus === "verifying") return "shield-check";
-                    if (torrentRoot.torrentStatus === "queued") return "clock";
-                    if (torrentRoot.torrentStatus === "idle") return "clock";
-                    return "help-circle";
-                }
-                color: {
-                    switch(torrentRoot.torrentStatus) {
-                        case "downloading": return Color.mPrimary;
-                        case "seeding": return Color.mSecondary;
-                        case "completed": return Color.mTertiary;
-                        case "stopped": return Color.mError;
-                        case "verifying": return Color.mHover;
-                        case "queued": return Color.mInfo;
-                        case "idle": return Color.mOutline;
-                        default: return Color.mOutline;
-                    }
-                }
-                pointSize: 16
-                applyUiScale: true
-            }
-            
-            // Основная информация с прогресс-баром
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: 4
-                
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    
-                    NText {
-                        Layout.fillWidth: true
-                        text: torrentRoot.torrentName
-                        color: Color.mOnSurface
-                        font.pointSize: Style.fontSizeS
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                    }
-                    
-                    NText {
-                        text: torrentRoot.torrentPercent + "%"
-                        color: Color.mOnSurfaceVariant
-                        font.pointSize: Style.fontSizeXS
-                        font.weight: Font.Bold
-                    }
-                }
-                
-                // Прогресс бар
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 4
-                    radius: 2
-                    color: Color.mSurfaceVariant
-                    
-                    Rectangle {
-                        width: parent.width * (torrentRoot.torrentPercent / 100)
-                        height: parent.height
-                        radius: 2
-                        color: {
-                            switch(torrentRoot.torrentStatus) {
-                                case "downloading": return Color.mPrimary;
-                                case "seeding": return Color.mSecondary;
-                                case "completed": return Color.mTertiary;
-                                case "stopped": return Color.mError;
-                                case "verifying": return Color.mHover;
-                                case "queued": return Color.mInfo;
-                                case "idle": return Color.mOutline;
-                                default: return Color.mOutline;
-                            }
-                        }
-                        
-                        Behavior on width {
-                            NumberAnimation {
-                                duration: 800
-                                easing.type: Easing.OutCubic
-                            }
-                        }
-                    }
-                }
-                
-                // Статус под прогресс-баром
-                NText {
-                    text: {
-                        var statusText = "";
-                        switch(torrentRoot.torrentStatus) {
-                            case "downloading": statusText = pluginApi?.tr("statusDownloading"); break;
-                            case "seeding": statusText = pluginApi?.tr("statusSeeding"); break;
-                            case "completed": statusText = pluginApi?.tr("statusCompleted"); break;
-                            case "stopped": statusText = pluginApi?.tr("statusPause"); break;
-                            case "verifying": statusText = pluginApi?.tr("statusVerifying"); break;
-                            case "queued": statusText = pluginApi?.tr("statusQueued"); break;
-                            case "idle": statusText = pluginApi?.tr("statusIdle"); break;
-                            default: statusText = pluginApi?.tr("statusUnknown");
-                        }
-                        return statusText;
-                    }
-                    color: Color.mOnSurfaceVariant
-                    font.pointSize: Style.fontSizeXS
-                }
-            }
-        }
-        
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            
-            onClicked: function(mouse) {
-                if (mouse.button === Qt.RightButton) {
-                    var torrentDelegatePos = torrentRoot.mapToItem(root, 0, 0);
-                    var clickX = mouse.x + torrentDelegatePos.x;
-                    var clickY = mouse.y + torrentDelegatePos.y;
-                    
-                    var torrentData = {
-                        "torrentId": torrentRoot.torrentId,
-                        "torrentName": torrentRoot.torrentName,
-                        "torrentPercent": torrentRoot.torrentPercent,
-                        "torrentStatus": torrentRoot.torrentStatus
-                    };
-                    
-                    torrentContextMenu.openForTorrent(torrentData, clickX, clickY);
-                }
+
+    Timer {
+        id: stopPlaybackTimer
+        interval: 100
+        repeat: false
+        property var stationToPlay: null
+
+        onTriggered: {
+            if (stationToPlay && pluginApi && pluginApi.mainInstance) {
+                pluginApi.mainInstance.playStation(stationToPlay.name, stationToPlay.url);
+                stationToPlay = null;
             }
         }
     }
-    
+
     Rectangle {
         id: panelContainer
         anchors.fill: parent
         color: Color.mSurface
+        anchors.margins: Style.marginS
+
         radius: Style.radiusM
-        
+        border.width: Style.borderS
+        border.color: Color.mOutline
         ColumnLayout {
-            anchors {
-                fill: parent
-                margins: Style.marginM
-            }
+            anchors.fill: parent
+            anchors.margins: Style.marginS
             spacing: Style.marginM
-            
-            RowLayout {
-                id: headerLayout
+
+            Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 40
-                spacing: Style.marginM
-                
-                Rectangle {
-                    id: daemonButton
-                    width: 36
-                    height: 36
-                    radius: 8
-                    color: {
-                        if (daemonButtonMouseArea.containsMouse) return Color.mError;
-                        if (pluginApi?.mainInstance?.daemonRunning) return Color.mSecondary;
-                        return Color.mOutline;
-                    }
-                    
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Style.animationFast
+                Layout.preferredHeight: headerHeight
+                Layout.topMargin: 20 * Style.uiScaleRatio
+                Layout.leftMargin: 20 * Style.uiScaleRatio
+                Layout.rightMargin: 20 * Style.uiScaleRatio
+                color: "transparent"
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: Style.marginM
+
+                    Rectangle {
+                        width: headerHeight * 0.8
+                        height: headerHeight * 0.8
+                        radius: 4
+                        color: Color.mSurfaceVariant
+                        border.width: Style.borderS
+                        border.color: Color.mOutline
+
+                        NIcon {
+                            id: radioIcon
+                            icon: "radio"
+                            anchors.centerIn: parent
+                            pointSize: Style.fontSizeXL * 1.2
+                            color: Color.mPrimary
                         }
                     }
-                    
-                    NIcon {
-                        id: daemonIcon
-                        anchors.centerIn: parent
-                        icon: {
-                            if (pluginApi?.mainInstance?.daemonRunning) return "power";
-                            return "power";
+
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        NText {
+                            text: "Онлайн радио"
+                            font.weight: Font.Bold
+                            font.pointSize: Style.fontSizeXL * 1.1
+                            color: Color.mOnSurface
                         }
-                        color: daemonButtonMouseArea.containsMouse ? Color.mOnHover : Color.mError
-                        pointSize: 24
-                        applyUiScale: true
-                        
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Style.animationFast
-                            }
-                        }
-                    }
-                    
-                    MouseArea {
-                        id: daemonButtonMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        
-                        onClicked: {
-                            if (pluginApi?.mainInstance) {
-                                var mainInstance = pluginApi.mainInstance;
-                                if (mainInstance.daemonRunning) {
-                                    mainInstance.stopDaemon();
-                                } else {
-                                    mainInstance.startDaemon();
-                                }
-                            }
+
+                        NText {
+                            text: "Выберите радиостанцию"
+                            font.pointSize: Style.fontSizeS
+                            color: Color.mOnSurfaceVariant
+                            opacity: 0.8
                         }
                     }
-                }
-                
-                ColumnLayout {
-                    spacing: Style.marginXS
-                    Layout.fillWidth: true
-                    
-                    NText {
-                        text: {
-                            if (errorMessage) return errorMessage;
-                            if (!torrentModel) return pluginApi?.tr("downloading");
-                            return pluginApi?.tr("active") + ": " + torrentModel.count ;
-                        }
-                        color: errorMessage ? Color.mError : Color.mOnSurfaceVariant
-                        font.pointSize: Style.fontSizeM
+
+                    NIconButton {
+                        icon: "settings"
+                        tooltipText: I18n.tr("common.settings")
+                        baseSize: Style.baseWidgetSize * 0.8
+                        onClicked: BarService.openPluginSettings(screen, pluginApi.manifest)
                     }
-                }
-                
-                Item {
-                    Layout.fillWidth: true
-                }
-                
-                Rectangle {
-                    id: addButton
-                    width: 36
-                    height: 36
-                    radius: 8
-                    color: addButtonMouseArea.containsMouse ? Color.mHover : Color.mSurfaceVariant
-                    visible: !root.addTorrentMode
-                    
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Style.animationFast
-                        }
-                    }
-                    
-                    NIcon {
-                        anchors.centerIn: parent
-                        icon: "plus"
-                        color: addButtonMouseArea.containsMouse ? Color.mOnHover : Color.mOnSurfaceVariant
-                        pointSize: 24
-                        applyUiScale: true
-                        
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Style.animationFast
-                            }
-                        }
-                    }
-                    
-                    MouseArea {
-                        id: addButtonMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        
-                        onClicked: {
-                            root.addTorrentMode = true;
-                        }
+
+                    NIconButton {
+                        icon: "close"
+                        tooltipText: I18n.tr("common.close")
+                        baseSize: Style.baseWidgetSize * 0.8
+                        onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
                     }
                 }
             }
-            
-            NDivider {
-                Layout.fillWidth: true
-            }
-            
-            Item {
-                id: contentArea
+
+            GridView {
+                id: gridView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                
-                StackLayout {
-                    id: mainStack
-                    anchors.fill: parent
-                    currentIndex: root.addTorrentMode ? 1 : 0
-                    
-                    Item {
-                        id: torrentsTab
-                        
-                        NListView {
-                            id: torrentsListView
-                            anchors.fill: parent
-                            visible: torrentModel && torrentModel.count > 0
-                            model: torrentModel
-                            spacing: 0 
-                            
-                            delegate: TorrentItem {
-                                width: ListView.view.width
-                                torrentId: model.id
-                                torrentName: model.name
-                                torrentPercent: model.percent
-                                torrentStatus: model.status
-                                itemIndex: index 
-                            }
-                        }
+                model: pluginApi && pluginApi.mainInstance ? pluginApi.mainInstance.getStations() : []
+                cellWidth: (gridView.width - (columns - 1) * cellSpacing) / columns
+                cellHeight: cellWidth + 70
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                    parent: gridView
+                    anchors {
+                        top: parent.top
+                        right: parent.right
+                        bottom: parent.bottom
+                        rightMargin: 10
                     }
-                    
-                    Item {
-                        id: addTorrentTab
-                        
-                        ScrollView {
+
+                    background: Rectangle {
+                        color: Color.mOutline
+                        implicitWidth: 6
+                        radius: 4
+                    }
+
+                    contentItem: Rectangle {
+                        color: Color.mPrimary
+                        radius: 4
+                    }
+                }
+
+                delegate: Item {
+                    id: delegateContainer
+                    width: gridView.cellWidth
+                    height: gridView.cellHeight
+
+                    readonly property bool isSelected: index === currentIndex
+                    readonly property bool isHovered: mouseArea.containsMouse
+                    readonly property bool isNowPlaying: isStationPlaying(modelData.name)
+                    readonly property bool isActive: isSelected || isHovered || isNowPlaying
+
+                    Rectangle {
+                        id: delegateRect
+                        anchors.fill: parent
+                        anchors.margins: cellSpacing / 2
+                        radius: Style.radiusM
+                        color: Color.mSurfaceVariant
+
+                        MouseArea {
+                            id: mouseArea
                             anchors.fill: parent
-                            clip: true
-                            
-                            ColumnLayout {
-                                width: addTorrentTab.width
-                                spacing: Style.marginM
-                                
-                                NText {
-                                    text: pluginApi?.tr("enterMagnetLink")
-                                    color: Color.mOnSurfaceVariant
-                                    font.pointSize: Style.fontSizeS
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton
+
+                            onContainsMouseChanged: {
+                                if (containsMouse && initialSelectionDone) {
+                                    currentIndex = index;
                                 }
-                                
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 56
-                                    radius: Style.radiusS
-                                    color: Color.mSurfaceVariant
-                                    border.width: Style.borderS
-                                    border.color: root.magnetLink ? Color.mSecondary : Color.mOutline
-                                    
-                                    TextArea {
-                                        id: magnetInput
-                                        anchors {
-                                            fill: parent
-                                            margins: Style.marginS
-                                        }
-                                        text: root.magnetLink
-                                        color: Color.mOnSurface
-                                        font.pointSize: Style.fontSizeS
-                                        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                                        selectByMouse: true
-                                        background: null
-                                        
-                                        onTextChanged: {
-                                            root.magnetLink = text;
-                                        }
-                                    }
-                                }
-                                
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 20
-                                    spacing: Style.marginM
-                                    
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 1
-                                        color: Color.mOutline
-                                    }
-                                    
-                                    NText {
-                                        text: pluginApi?.tr("or")
-                                        color: Color.mOnSurfaceVariant
-                                        font.pointSize: Style.fontSizeXS
-                                        font.weight: Font.Medium
-                                    }
-                                    
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 1
-                                        color: Color.mOutline
-                                    }
-                                }
-                                
-                                Loader {
-                                    id: fileInputLoader
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 40
-                                    
-                                    sourceComponent: root.torrentFilePath ? fileSelectedComponent : selectFileComponent
-                                }
-                                
-                                NFilePicker {
-                                    id: torrentFilePicker
-                                    title: pluginApi?.tr("selectFile")
-                                    selectionMode: "files"
-                                    nameFilters: ["*.torrent"]
-                                    showHiddenFiles: false
-                                    
-                                    onAccepted: function(paths) {
-                                        if (paths.length > 0) {
-                                            root.torrentFilePath = paths[0];
-                                        }
-                                    }
-                                    
-                                    onCancelled: {
-                                    }
-                                }
-                                
-                                Item {
-                                    Layout.fillHeight: true
-                                }
-                                
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 40
-                                    spacing: Style.marginM
-                                    Layout.topMargin: Style.marginL
-                                    
-                                    NButton {
-                                        Layout.fillWidth: true
-                                        text: pluginApi?.tr("cancel")
-                                        outlined: true
-                                        onClicked: {
-                                            root.addTorrentMode = false;
-                                            root.magnetLink = "";
-                                            root.torrentFilePath = "";
-                                        }
-                                    }
-                                    
-                                    NButton {
-                                        Layout.fillWidth: true
-                                        text: pluginApi?.tr("addTorrentTitle")
-                                        icon: "plus"
-                                        enabled: root.magnetLink || root.torrentFilePath
-                                        onClicked: {
-                                            if (root.torrentFilePath) {
-                                                if (pluginApi?.mainInstance && root.torrentFilePath) {
-                                                    pluginApi.mainInstance.addTorrentFromFile(root.torrentFilePath);
-                                                }
-                                            } else if (root.magnetLink) {
-                                                if (pluginApi?.mainInstance && root.magnetLink) {
-                                                    pluginApi.mainInstance.addTorrentFromMagnet(root.magnetLink);
-                                                }
-                                            }
-                                            
-                                            root.addTorrentMode = false;
-                                            root.magnetLink = "";
-                                            root.torrentFilePath = "";
+                            }
+
+                            onClicked: {
+                                currentIndex = index;
+                                if (pluginApi && pluginApi.mainInstance) {
+                                    var main = pluginApi.mainInstance;
+
+                                    if (isStationPlaying(modelData.name)) {
+                                        main.stopPlayback();
+                                    } else {
+                                        if (isPlaying) {
+                                            main.stopPlayback();
+                                            stopPlaybackTimer.stationToPlay = modelData;
+                                            stopPlaybackTimer.start();
+                                        } else {
+                                            main.playStation(modelData.name, modelData.url);
                                         }
                                     }
                                 }
                             }
                         }
-                        
-                        Component {
-                            id: selectFileComponent
-                            NButton {
-                                height: parent.height
-                                text: pluginApi?.tr("selectFile")
-                                icon: "folder"
-                                onClicked: {
-                                    torrentFilePicker.openFilePicker();
-                                }
-                            }
-                        }
-                        
-                        // Компонент для отображения выбранного файла
-                        Component {
-                            id: fileSelectedComponent
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: Style.marginM
+                            spacing: Style.marginS
+
                             Rectangle {
-                                height: parent.height
-                                radius: 8
-                                color: Color.mSurface
-                                border.width: Style.borderS
-                                border.color: Color.mSecondary
-                                
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: Style.marginS
-                                    spacing: 8
-                                    
-                                    NText {
-                                        text: root.torrentFilePath.split('/').pop()
-                                        color: Color.mOnSurfaceVariant
-                                        font.pointSize: Style.fontSizeS
-                                        elide: Text.ElideMiddle
-                                        Layout.fillWidth: true
-                                        Layout.alignment: Qt.AlignVCenter
+                                id: imageSquare
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: width
+                                Layout.minimumHeight: 60
+                                color: "transparent"
+                                radius: Style.radiusM
+                                clip: true
+
+                                scale: isActive ? 1.2 : 1.0
+
+                                Behavior on scale {
+                                    NumberAnimation {
+                                        duration: 200
+                                        easing.type: Easing.InOutQuad
                                     }
-                                    
-                                    Rectangle {
-                                        Layout.preferredWidth: 24
-                                        Layout.preferredHeight: 24
-                                        radius: width / 2
-                                        color: clearButtonMouseArea.containsMouse ? Color.mHover : Color.mOutline
-                                        Layout.alignment: Qt.AlignVCenter
-                                        
-                                        NIcon {
-                                            anchors.centerIn: parent
-                                            icon: "x"
-                                            color: Color.mError
-                                            pointSize: 12
-                                            applyUiScale: true
+                                }
+
+                                transformOrigin: Item.Center
+
+                                Rectangle {
+                                    id: iconPlaceholder
+                                    anchors.fill: parent
+                                    radius: Style.radiusM
+                                    color: Color.mSurfaceVariant
+                                    visible: true
+
+                                    NIcon {
+                                        anchors.centerIn: parent
+                                        icon: "radio"
+                                        color: Color.mOnSurfaceVariant
+                                        pointSize: Math.min(parent.width * 0.4, 36)
+                                    }
+                                }
+
+                                Image {
+                                    id: stationImage
+                                    anchors.fill: parent
+                                    source: getImageUrl(modelData.name)
+                                    fillMode: Image.PreserveAspectCrop
+                                    smooth: true
+                                    visible: false
+                                    cache: true
+                                    asynchronous: true
+
+                                    layer.enabled: isNowPlaying
+                                    layer.effect: ShaderEffect {
+                                        id: rippleEffect
+                                        property real time: 0
+                                        property real speed: 0.02
+                                        property variant source: ShaderEffectSource {
+                                            sourceItem: stationImage
+                                            hideSource: true
                                         }
-                                        
-                                        MouseArea {
-                                            id: clearButtonMouseArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            
-                                            onClicked: {
-                                                root.torrentFilePath = "";
-                                            }
+
+                                        fragmentShader: "Shaders/ripple.qsb"
+
+                                        NumberAnimation on time {
+                                            from: 0
+                                            to: 10000
+                                            duration: 60000
+                                            loops: Animation.Infinite
+                                            running: isNowPlaying
+                                        }
+                                    }
+
+                                    onStatusChanged: {
+                                        if (status === Image.Ready) {
+                                            iconPlaceholder.visible = false;
+                                            stationImage.visible = true;
+                                        } else if (status === Image.Error) {
+                                            iconPlaceholder.visible = true;
+                                            stationImage.visible = false;
                                         }
                                     }
                                 }
+
+                                Rectangle {
+                                    id: indicator
+                                    visible: isNowPlaying
+                                    anchors {
+                                        top: parent.top
+                                        right: parent.right
+                                        margins: Style.marginXS
+                                    }
+                                    width: 28
+                                    height: 28
+                                    radius: 14
+                                    color: Color.mHover
+
+                                    NIcon {
+                                        anchors.centerIn: parent
+                                        icon: "volume"
+                                        color: Color.mOnHover
+                                        pointSize: 16
+                                        z: 1
+                                    }
+                                }
+                            }
+
+                            NText {
+                                text: modelData.name
+                                color: Color.mOnSurfaceVariant
+                                font.pointSize: isActive ? Style.fontSizeM : Style.fontSizeS
+                                font.weight: (isNowPlaying || isActive) ? Font.Bold : Font.Normal
+                                elide: Text.ElideRight
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.fillWidth: true
+                                Layout.maximumHeight: 40
+                                wrapMode: Text.WordWrap
+                                maximumLineCount: 2
                             }
                         }
                     }
                 }
+
+                Item {
+                    anchors.centerIn: parent
+                    width: parent.width - 40
+                    height: 120
+                    visible: gridView.count === 0
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: Style.marginM
+
+                        NIcon {
+                            icon: "radio"
+                            color: Color.mOnSurfaceVariant
+                            pointSize: 32
+                            opacity: 0.5
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        NText {
+                            text: pluginApi?.tr("NotLoaded") || "Нет данных"
+                            color: Color.mOnSurfaceVariant
+                            font.pointSize: Style.fontSizeM
+                            font.weight: Font.Medium
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        NText {
+                            text: pluginApi?.tr("addStations") || "Добавьте радиостанции"
+                            color: Color.mOnSurfaceVariant
+                            font.pointSize: Style.fontSizeS
+                            opacity: 0.7
+                            Layout.alignment: Qt.AlignHCenter
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    Component.onCompleted: {
+        selectionTimer.start();
+        forceActiveFocus();
+    }
+
+    Timer {
+        id: selectionTimer
+        interval: 100
+        repeat: false
+        onTriggered: {
+            updateSelectionFromPlaying();
+            Qt.callLater(ensureVisible);
+        }
+    }
+
+    Connections {
+        target: pluginApi && pluginApi.mainInstance ? pluginApi.mainInstance : null
+        enabled: pluginApi && pluginApi.mainInstance
+
+        function onCurrentPlayingStationChanged() {
+            updateSelectionFromPlaying();
+        }
+
+        function onCurrentPlayingProcessStateChanged() {
+            updateSelectionFromPlaying();
         }
     }
 }

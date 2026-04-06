@@ -1925,13 +1925,13 @@
     }
   },
   "weather": {
-    "clear-sky": "Ясное небо",
-    "drizzle": "Морось",
+    "clear-sky": "Ясно",
+    "drizzle": "Небольшой дождь",
     "fog": "Туман",
     "mainly-clear": "Преимущественно ясно",
     "overcast": "Пасмурно",
     "partly-cloudy": "Переменная облачность",
-    "rain-showers": "Ливни",
+    "rain-showers": "Дождь",
     "snow": "Снег",
     "thunderstorm": "Гроза"
   },

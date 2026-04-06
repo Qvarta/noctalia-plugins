@@ -7,20 +7,15 @@ import qs.Services.UI
 
 Item {
     id: root
-    property var pluginApi: null
+    anchors.fill: parent
 
+    property var pluginApi: null
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 600 * Style.uiScaleRatio
     property real contentPreferredHeight: 400 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     readonly property bool isPlaying: pluginApi && pluginApi.mainInstance && pluginApi.mainInstance.currentPlayingProcessState === "start"
-
-    function isStationPlaying(stationName) {
-        return isPlaying && pluginApi.mainInstance.currentPlayingStation === stationName;
-    }
-
-    anchors.fill: parent
 
     property int currentIndex: 0
     property int columns: 4
@@ -29,6 +24,10 @@ Item {
 
     readonly property real headerHeight: 52 * Style.uiScaleRatio
     readonly property real panelMargin: 20 * Style.uiScaleRatio
+    
+    function isStationPlaying(stationName) {
+        return isPlaying && pluginApi.mainInstance.currentPlayingStation === stationName;
+    }
 
     function getImageUrl(stationName) {
         return Qt.resolvedUrl("images/" + stationName + ".png");
@@ -123,13 +122,6 @@ Item {
         }
     }
 
-    Keys.onUpPressed: moveSelection(0, -1)
-    Keys.onDownPressed: moveSelection(0, 1)
-    Keys.onLeftPressed: moveSelection(-1, 0)
-    Keys.onRightPressed: moveSelection(1, 0)
-    Keys.onReturnPressed: activateCurrentStation()
-    Keys.onEnterPressed: activateCurrentStation()
-
     function updateSelectionFromPlaying() {
         if (pluginApi && pluginApi.mainInstance) {
             var currentStation = pluginApi.mainInstance.currentPlayingStation;
@@ -151,6 +143,13 @@ Item {
             Qt.callLater(ensureVisible);
         }
     }
+
+    Keys.onUpPressed: moveSelection(0, -1)
+    Keys.onDownPressed: moveSelection(0, 1)
+    Keys.onLeftPressed: moveSelection(-1, 0)
+    Keys.onRightPressed: moveSelection(1, 0)
+    Keys.onReturnPressed: activateCurrentStation()
+    Keys.onEnterPressed: activateCurrentStation()
 
     Timer {
         id: stopPlaybackTimer
@@ -336,11 +335,11 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: width
                                 Layout.minimumHeight: 60
-                                color: Color.mSurfaceVariant
+                                color: isNowPlaying ? "transparent" : Color.mSurfaceVariant
                                 radius: Style.radiusM
                                 clip: true
 
-                                scale: isActive ? 1.3 : 1.0
+                                scale: isActive ? 1.2 : 1.0
 
                                 Behavior on scale {
                                     NumberAnimation {
@@ -383,6 +382,43 @@ Item {
                                         } else if (status === Image.Error) {
                                             iconPlaceholder.visible = true;
                                             stationImage.visible = false;
+                                        }
+                                    }
+                                }
+
+                                Loader {
+                                    id: rippleLoader
+                                    anchors.fill: stationImage
+                                    active: isNowPlaying && stationImage.visible
+
+                                    sourceComponent: Item {
+                                        anchors.fill: parent
+
+                                        property real shaderTime: 0
+                                        NumberAnimation on shaderTime {
+                                            loops: Animation.Infinite
+                                            from: 0
+                                            to: 1000
+                                            duration: 30000
+                                        }
+
+                                        ShaderEffect {
+                                            id: rippleEffect
+                                            anchors.fill: parent
+
+                                            property var source: ShaderEffectSource {
+                                                sourceItem: stationImage
+                                                hideSource: true
+                                            }
+
+                                            property real time: parent.shaderTime
+                                            property real speed: 0.1     // Скорость волн (меньше = медленнее)
+                                            property real waveFrequency: 20.0  // Частота (меньше = шире волны)
+                                            property real waveAmplitude: 0.1 // Амплитуда (меньше = слабее эффект)
+                                            property real itemWidth: rippleEffect.width
+                                            property real itemHeight: rippleEffect.height
+
+                                            fragmentShader: "Shaders/ripple.qsb"
                                         }
                                     }
                                 }

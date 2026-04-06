@@ -1,6 +1,5 @@
 {
-  "currentIconName": "radar-2",
-  "stations_json": "/home/ko/.config/test/stations.json",
+  "currentIconName": "loader-3",
   "station_0_name": "Best FM",
   "station_0_url": "http://nashe1.hostingradio.ru/best-256",
   "station_1_name": "Ретро FM",
@@ -47,9 +46,11 @@
   "station_21_url": "http://dfm.hostingradio.ru/dfm128.mp3",
   "station_22_name": "Kiss FM",
   "station_22_url": "http://a7.radioheart.io:8015/RH73674",
-  "station_count": 23,
-  "currentPlayingStation": "",
-  "currentPlayingProcessState": "",
+  "station_count": 24,
+  "station_23_name": "Royal",
+  "station_23_url": "http://c22.radioboss.fm/stream/186",
+  "currentPlayingStation": "Ретро FM",
+  "currentPlayingProcessState": "start",
   "currentTrack": "",
   "currentArtist": ""
 }
