@@ -49,21 +49,31 @@ Item {
             if (currentStation && currentStation !== "") {
                 for (var i = 0; i < stations.length; i++) {
                     if (stations[i].name === currentStation) {
-                        currentIndex = i;
+                        if (currentIndex !== i) {
+                            currentIndex = i;
+                        }
                         Qt.callLater(ensureVisible);
                         return;
                     }
                 }
             }
         }
-        currentIndex = 0;
-        Qt.callLater(ensureVisible);
+        if (currentIndex !== 0) {
+            currentIndex = 0;
+            Qt.callLater(ensureVisible);
+        }
     }
 
     function ensureVisible() {
         if (!gridView || !gridView.model || gridView.model.length === 0)
             return;
-        gridView.positionViewAtIndex(currentIndex, GridView.Contain);
+        
+        // Небольшая задержка для завершения layout'а
+        Qt.callLater(function() {
+            if (gridView.model && gridView.model.length > currentIndex) {
+                gridView.positionViewAtIndex(currentIndex, GridView.Contain);
+            }
+        });
     }
 
     function selectStation(index) {
@@ -161,6 +171,17 @@ Item {
             if (stationToPlay && pluginApi && pluginApi.mainInstance) {
                 pluginApi.mainInstance.playStation(stationToPlay.name, stationToPlay.url);
                 stationToPlay = null;
+            }
+        }
+    }
+    
+    Timer {
+        id: initialScrollTimer
+        interval: 150
+        repeat: false
+        onTriggered: {
+            if (gridView.model && gridView.model.length > 0) {
+                updateCurrentIndex();
             }
         }
     }
@@ -446,7 +467,7 @@ Item {
 
                             NText {
                                 text: modelData.name
-                                color: '#ffffff'
+                                color: isNowPlaying ? Color.mPrimary : Color.mSecondary
                                 font.pointSize: isActive ? Style.fontSizeM : Style.fontSizeS
                                 font.weight: (isNowPlaying || isActive) ? Font.Bold : Font.Normal
                                 elide: Text.ElideRight
@@ -502,9 +523,14 @@ Item {
 
     Component.onCompleted: {
         currentIndex = 0;
-        updateCurrentIndex();
+        initialScrollTimer.start();
         forceActiveFocus();
-        Qt.callLater(ensureVisible);
+    }
+    
+    onPluginApiChanged: {
+        if (pluginApi && pluginApi.mainInstance) {
+            initialScrollTimer.start();
+        }
     }
 
     Connections {
@@ -517,6 +543,10 @@ Item {
 
         function onCurrentPlayingProcessStateChanged() {
             updateSelectionFromPlaying();
+        }
+        
+        function onStationsLoaded() {
+            initialScrollTimer.start();
         }
     }
 }

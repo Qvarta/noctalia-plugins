@@ -19,37 +19,55 @@ void main() {
     vec2 centered = uv - 0.5;
     float dist = length(centered);
     
-    // Создаем маску круга (радиус 0.5, так как квадрат от 0 до 1)
-    float circleMask = 1.0 - smoothstep(0.48, 0.5, dist);
+    vec4 originalImage = texture(source, uv);
     
-    // Если пиксель вне круга - делаем его прозрачным
-    if (circleMask <= 0.0) {
-        fragColor = vec4(0.0, 0.0, 0.0, 0.0);
-        return;
-    }
+    float outerRadius = 0.5;      // внешний край синего круга
+    float innerRadius = 0.4;     // внутренний край синего круга / внешний край белого
     
-    // uniform-переменные
+    // 1. Маска для синего кольца 
+    float blueMask = (1.0 - smoothstep(innerRadius - 0.03, innerRadius, dist)) * 
+                     (1.0 - smoothstep(outerRadius - 0.03, outerRadius, dist));
+    
+    // 2. Маска для внутреннего круга
+    // Размытие на 0.05 единиц для плавного перехода
+    float innerCircleMask = 1.0 - smoothstep(innerRadius - 0.05, innerRadius, dist);
+    
+    // 3. Эффект ряби для внутреннего круга
     float waveFreq = ub.waveFrequency > 0.0 ? ub.waveFrequency : 30.0;
     float waveAmp = ub.waveAmplitude > 0.0 ? ub.waveAmplitude : 0.015;
     float waveSpeed = ub.time * ub.speed * 1.5;
     
     float ripple = sin(dist * waveFreq - waveSpeed) * waveAmp;
-    float falloff = 1.0 - smoothstep(0.1, 0.8, dist);
+    float falloff = 1.0 - smoothstep(0.1, innerRadius - 0.05, dist);
     ripple = ripple * falloff;
     
+    // Искажаем UV координаты для эффекта ряби
     vec2 distortedUv = uv + centered * ripple;
-    vec4 color = texture(source, distortedUv);
+    vec4 innerImage = texture(source, distortedUv);
     
+    // Тени и блики для ряби
     vec2 shadowOffset = centered * ripple * 1.2;
     vec2 shadowUv = uv + shadowOffset;
     vec4 shadowColor = texture(source, shadowUv);
     
     float shadowIntensity = abs(ripple) * 1.5;
-    
-    vec3 finalColor = mix(color.rgb, shadowColor.rgb * 0.3, shadowIntensity);
+    vec3 imageWithRipple = mix(innerImage.rgb, shadowColor.rgb * 0.3, shadowIntensity);
     
     float highlight = max(0.0, sin(dist * waveFreq - waveSpeed) * 0.5 + 0.5) * ripple * 5.0;
-    finalColor += vec3(highlight * 0.5, highlight * 0.3, highlight);
+    imageWithRipple += vec3(highlight * 0.5, highlight * 0.3, highlight);
     
-    fragColor = vec4(finalColor, color.a * circleMask);
+    // 4. Цвета
+    vec3 blueColor = vec3(0.1, 0.2, 0.8);
+    vec3 whiteColor = vec3(1.0, 1.0, 1.0);
+    
+    // 5. Смешиваем слои
+    vec3 finalColor = blueColor * blueMask;
+    vec3 whiteLayer = whiteColor * innerCircleMask;
+    finalColor = mix(finalColor, whiteLayer, innerCircleMask);
+    vec3 imageLayer = imageWithRipple * innerCircleMask;
+    finalColor = mix(finalColor, imageLayer, innerCircleMask);
+    
+    float finalAlpha = 1.0 - smoothstep(outerRadius - 0.05, outerRadius + 0.05, dist);
+    
+    fragColor = vec4(finalColor, finalAlpha);
 }

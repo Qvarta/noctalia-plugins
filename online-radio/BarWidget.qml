@@ -146,7 +146,7 @@ Item {
                     }
                 }
                 
-                // Обновляем анимацию при изменении размера
+                // Обновление при изменении размера
                 Connections {
                     target: runningText
                     function onWidthChanged() {
