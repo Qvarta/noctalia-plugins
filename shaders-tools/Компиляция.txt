@@ -1,0 +1,1 @@
+qsb-qt6 --qt6 --glsl 100es,120,150 S_R_A2.frag -o test.qsb

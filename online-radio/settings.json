@@ -49,8 +49,8 @@
   "station_count": 24,
   "station_23_name": "Royal",
   "station_23_url": "http://c22.radioboss.fm/stream/186",
-  "currentPlayingStation": "Эльдорадио",
-  "currentPlayingProcessState": "start",
-  "currentTrack": "DARDOS",
-  "currentArtist": "ROMEO SANTOS & PRINCE ROYCE"
+  "currentPlayingStation": "",
+  "currentPlayingProcessState": "",
+  "currentTrack": "Waiting for Tonight (by 3rd Party)",
+  "currentArtist": "TWOPILOTS"
 }

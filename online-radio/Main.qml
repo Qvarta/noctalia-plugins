@@ -17,6 +17,7 @@ Item {
             currentPlayingProcessState = pluginApi.pluginSettings.currentPlayingProcessState || "";
             currentTrack = pluginApi.pluginSettings.currentTrack || "";
             currentArtist = pluginApi.pluginSettings.currentArtist || "";
+            root.stopPlayback();
         }
     }
 

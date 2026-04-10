@@ -24,7 +24,7 @@ Item {
 
     readonly property real headerHeight: 52 * Style.uiScaleRatio
     readonly property real panelMargin: 20 * Style.uiScaleRatio
-    
+
     function isStationPlaying(stationName) {
         return isPlaying && pluginApi.mainInstance.currentPlayingStation === stationName;
     }
@@ -67,9 +67,8 @@ Item {
     function ensureVisible() {
         if (!gridView || !gridView.model || gridView.model.length === 0)
             return;
-        
-        // Небольшая задержка для завершения layout'а
-        Qt.callLater(function() {
+
+        Qt.callLater(function () {
             if (gridView.model && gridView.model.length > currentIndex) {
                 gridView.positionViewAtIndex(currentIndex, GridView.Contain);
             }
@@ -174,7 +173,7 @@ Item {
             }
         }
     }
-    
+
     Timer {
         id: initialScrollTimer
         interval: 150
@@ -195,6 +194,7 @@ Item {
         radius: Style.radiusM
         border.width: Style.borderS
         border.color: Color.mOutline
+
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Style.marginS
@@ -306,6 +306,18 @@ Item {
                     readonly property bool isNowPlaying: isStationPlaying(modelData.name)
                     readonly property bool isActive: isSelected || isHovered || isNowPlaying
 
+                    // Следим за изменением isNowPlaying
+                    onIsNowPlayingChanged: {
+                        updateImageVisibility();
+                    }
+
+                    function updateImageVisibility() {
+                        // Обновляем видимость обычного изображения при изменении статуса воспроизведения
+                        if (stationImageSource.status === Image.Ready) {
+                            stationImage.visible = !isNowPlaying;
+                        }
+                    }
+
                     Rectangle {
                         id: delegateRect
                         anchors.fill: parent
@@ -371,6 +383,7 @@ Item {
 
                                 transformOrigin: Item.Center
 
+                                // Плейсхолдер для иконки (показывается когда нет изображения)
                                 Rectangle {
                                     id: iconPlaceholder
                                     anchors.fill: parent
@@ -386,20 +399,21 @@ Item {
                                     }
                                 }
 
+                                // Скрытый источник изображения (всегда загружает картинку для шейдера)
                                 Image {
-                                    id: stationImage
+                                    id: stationImageSource
                                     anchors.fill: parent
                                     source: getImageUrl(modelData.name)
                                     fillMode: Image.PreserveAspectCrop
                                     smooth: true
-                                    visible: false
                                     cache: true
                                     asynchronous: true
+                                    visible: false
 
                                     onStatusChanged: {
                                         if (status === Image.Ready) {
                                             iconPlaceholder.visible = false;
-                                            stationImage.visible = true;
+                                            stationImage.visible = !isNowPlaying;
                                         } else if (status === Image.Error) {
                                             iconPlaceholder.visible = true;
                                             stationImage.visible = false;
@@ -407,43 +421,93 @@ Item {
                                     }
                                 }
 
-                                Loader {
-                                    id: rippleLoader
-                                    anchors.fill: stationImage
-                                    active: isNowPlaying && stationImage.visible
+                                // Обычное изображение (только для неиграющих станций)
+                                Image {
+                                    id: stationImage
+                                    anchors.fill: parent
+                                    source: stationImageSource.source
+                                    fillMode: Image.PreserveAspectCrop
+                                    smooth: true
+                                    visible: false
+                                }
 
-                                    sourceComponent: Item {
-                                        anchors.fill: parent
+                                ShaderEffect {
+                                    id: playingShader
+                                    anchors.fill: parent
+                                    visible: isNowPlaying && stationImageSource.status === Image.Ready
 
-                                        property real shaderTime: 0
-                                        NumberAnimation on shaderTime {
+                                    property var source: ShaderEffectSource {
+                                        sourceItem: stationImageSource
+                                        hideSource: true
+                                        live: true
+                                    }
+
+                                    property real time: shaderAnimator.animTime
+                                    property color bgWidget: Color.mSurface
+                                    property vector2d resolution: Qt.vector2d(width, height)
+                                    property color bgColor1:  "blue"
+
+                                    fragmentShader: Qt.resolvedUrl("Shaders/ring.qsb")
+
+                                    // Аниматор времени для шейдера
+                                    Item {
+                                        id: shaderAnimator
+                                        property real animTime: 0
+
+                                        NumberAnimation on animTime {
                                             loops: Animation.Infinite
                                             from: 0
                                             to: 1000
-                                            duration: 30000
-                                        }
-
-                                        ShaderEffect {
-                                            id: rippleEffect
-                                            anchors.fill: parent
-
-                                            property var source: ShaderEffectSource {
-                                                sourceItem: stationImage
-                                                hideSource: true
-                                            }
-
-                                            property real time: parent.shaderTime
-                                            property real speed: 0.1     // Скорость волн (меньше = медленнее)
-                                            property real waveFrequency: 20.0  // Частота (меньше = шире волны)
-                                            property real waveAmplitude: 0.1 // Амплитуда (меньше = слабее эффект)
-                                            property real itemWidth: rippleEffect.width
-                                            property real itemHeight: rippleEffect.height
-
-                                            fragmentShader: "Shaders/ripple.qsb"
+                                            duration: 60000
+                                            running: playingShader.visible
                                         }
                                     }
                                 }
+                                // // Шейдерный эффект (только для играющих станций)
+                                // ShaderEffect {
+                                //     id: playingShader
+                                //     anchors.fill: parent
+                                //     visible: isNowPlaying && stationImageSource.status === Image.Ready
 
+                                //     property var source: ShaderEffectSource {
+                                //         sourceItem: stationImageSource
+                                //         hideSource: true
+                                //         live: true
+                                //     }
+
+                                //     property real time: shaderAnimator.animTime
+                                //     property real itemWidth: playingShader.width
+                                //     property real itemHeight: playingShader.height
+                                //     property color bgColor1: Color.mPrimary
+                                //     property color bgColor2: Color.mHover
+                                //     property real raysCount: 90.0
+                                //     property real radius: 0.7
+                                //     property real rayLength: 0.5
+                                //     property real rotationSpeed: 24.0
+                                //     property real barSpeed: 0.8
+                                //     property real rippleSpeed: 0.3
+                                //     property real rippleFrequency: 10.0
+                                //     property real rippleAmplitude: 0.2
+                                //     property real barWidth: 0.03
+
+                                //     fragmentShader: "Shaders/ripple2.qsb"
+
+                                //     // Аниматор времени для шейдера
+                                //     Item {
+                                //         id: shaderAnimator
+                                //         property real animTime: 0
+
+                                //         NumberAnimation on animTime {
+                                //             loops: Animation.Infinite
+                                //             from: 0
+                                //             to: 360
+                                //             duration: 36000
+                                //             running: playingShader.visible
+                                //         }
+                                //     }
+                                // }
+
+                                // Индикатор "Playing"
                                 Rectangle {
                                     visible: isNowPlaying
                                     anchors {
@@ -526,7 +590,7 @@ Item {
         initialScrollTimer.start();
         forceActiveFocus();
     }
-    
+
     onPluginApiChanged: {
         if (pluginApi && pluginApi.mainInstance) {
             initialScrollTimer.start();
@@ -544,7 +608,7 @@ Item {
         function onCurrentPlayingProcessStateChanged() {
             updateSelectionFromPlaying();
         }
-        
+
         function onStationsLoaded() {
             initialScrollTimer.start();
         }

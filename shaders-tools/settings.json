@@ -1,0 +1,29 @@
+{
+  "shaderParams": [
+    {
+      "name": "bgColor2",
+      "type": "color",
+      "value": "#FFCB3E"
+    },
+    {
+      "name": "bgColor1",
+      "type": "color",
+      "value": "#000000"
+    },
+    {
+      "name": "size",
+      "type": "real",
+      "value": "0.25"
+    },
+    {
+      "name": "center",
+      "type": "point",
+      "value": "0.5,0.5"
+    },
+    {
+      "name": "bgColor",
+      "type": "color",
+      "value": "#984268"
+    }
+  ]
+}
